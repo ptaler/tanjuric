@@ -201,11 +201,40 @@ textarea.input{resize:vertical;padding:10px 12px}
 .aside-actions .btn{flex:1 1 120px}
 
 /* Tabs */
-.tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:6px}
+.tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:6px}
 .tab{min-height:44px;padding:6px 8px;border:none;border-radius:10px;background:transparent;color:var(--text3);font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;min-width:0}
 .tab .n{font-size:12px;font-weight:700;padding:1px 8px;border-radius:999px;background:#EEF1F0;color:var(--muted);font-variant-numeric:tabular-nums}
 .tab[aria-pressed="true"]{background:var(--tint);color:var(--accent-text)}
 .tab[aria-pressed="true"] .n{background:var(--accent);color:#fff}
+
+/* Timeline (Sve) */
+.tl{position:relative;display:flex;flex-direction:column;padding-left:48px}
+.tl::before{content:"";position:absolute;left:19px;top:22px;bottom:22px;width:2px;border-radius:2px;background:linear-gradient(var(--line2),var(--line2)) center/2px 100% no-repeat}
+.tl-item{position:relative}
+.tl-node{width:40px;height:40px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto}
+.tl-item > .tl-node{position:absolute;left:-48px;top:12px;z-index:1;box-shadow:0 0 0 4px var(--bg)}
+.tl-node.meal{background:var(--tint);color:var(--accent)}
+.tl-node.react{background:#FFEDD5;color:#C2410C}
+.tl-node.dose{background:#EDE9FE;color:#6D28D9}
+.tl-node.temp{background:#FEF3C7;color:#B45309}
+.tl-node.sm{width:26px;height:26px}
+.tl-node.sm svg{width:14px;height:14px}
+.tl-gap{font-size:12px;font-weight:600;color:var(--muted);padding:7px 0 7px 4px;font-variant-numeric:tabular-nums}
+.tl .entry.tl-react{background:#FFF8F3;border-color:#FBD5BC}
+.tl-legend{display:flex;flex-wrap:wrap;gap:8px 14px;font-size:13px;color:var(--text3)}
+.tl-legend > span{display:inline-flex;align-items:center;gap:6px}
+.pick-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+.pick-opt{min-height:72px;padding:12px 14px;border-radius:14px;border:1px solid var(--line2);background:#fff;display:flex;align-items:center;gap:12px;text-align:left}
+.pick-opt:hover{border-color:var(--accent);background:var(--soft)}
+.pick-opt > span:last-child{display:flex;flex-direction:column;gap:2px;font-size:13px}
+.pick-opt strong{font-size:16px;color:var(--text)}
+@media (max-width:480px){
+  .tabs{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .tl{padding-left:40px}
+  .tl::before{left:15px}
+  .tl-item > .tl-node{left:-40px;width:32px;height:32px}
+  .tl-item > .tl-node svg{width:15px;height:15px}
+}
 
 /* Therapy & temperature */
 .badge.info{background:var(--tint);color:var(--accent-text)}
