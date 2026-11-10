@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="hr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tanjurić — dnevnik prehrane</title>
+<meta name="description" content="Dnevnik prehrane po obrocima za roditelje djece s alergijama i problemima s prehranom.">
+<meta name="theme-color" content="#0F766E">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preload" href="fonts/figtree-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/figtree-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+@font-face{font-family:'Figtree';font-style:normal;font-display:swap;font-weight:400;src:url(fonts/figtree-latin-ext-400-normal.woff2) format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:'Figtree';font-style:normal;font-display:swap;font-weight:400;src:url(fonts/figtree-latin-400-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'Figtree';font-style:normal;font-display:swap;font-weight:500;src:url(fonts/figtree-latin-ext-500-normal.woff2) format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:'Figtree';font-style:normal;font-display:swap;font-weight:500;src:url(fonts/figtree-latin-500-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'Figtree';font-style:normal;font-display:swap;font-weight:600;src:url(fonts/figtree-latin-ext-600-normal.woff2) format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:'Figtree';font-style:normal;font-display:swap;font-weight:600;src:url(fonts/figtree-latin-600-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'Figtree';font-style:normal;font-display:swap;font-weight:700;src:url(fonts/figtree-latin-ext-700-normal.woff2) format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:'Figtree';font-style:normal;font-display:swap;font-weight:700;src:url(fonts/figtree-latin-700-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+
+:root{
+  --accent:#0F766E; --accent-text:#0C5E58; --tint:#E2F0EF;
+  --bg:#F3F5F4; --surface:#FFFFFF; --soft:#F8FAF9;
+  --line:#DDE3E1; --line2:#C9D2CF; --line3:#A9B4B1;
+  --text:#17211F; --text2:#2B3734; --text3:#3B4744; --muted:#52605C;
+  --warn-bg:#FFF7ED; --warn-fg:#9A3412; --warn-bd:#FDBA74;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font-family:'Figtree',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;font-size:15px;line-height:1.45}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+button:disabled{cursor:not-allowed;opacity:.5}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+h1,h2,h3,p{margin:0}
+[hidden]{display:none !important}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.muted{color:var(--muted)}
+.wrap{max-width:1200px;margin:0 auto;padding-left:20px;padding-right:20px}
+
+/* Header */
+.top{background:var(--surface);border-bottom:1px solid var(--line)}
+.top .wrap{padding-top:16px;padding-bottom:16px;display:flex;flex-direction:column;gap:14px}
+.top-row{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{width:44px;height:44px;border-radius:12px;background:var(--accent);display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+.brand-name{font-size:20px;font-weight:700;letter-spacing:-.01em;display:block}
+.brand-sub{font-size:13px;color:var(--muted);display:block}
+.child-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.child-chip{min-height:44px;padding:6px 16px 6px 6px;border-radius:999px;border:1px solid var(--line2);background:#fff;color:var(--text2);font-weight:600;display:inline-flex;align-items:center;gap:8px}
+.child-chip .av{width:30px;height:30px;border-radius:999px;background:#E6EBE9;color:var(--text2);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700}
+.child-chip[aria-pressed="true"]{background:var(--tint);border-color:var(--accent);color:var(--accent-text)}
+.child-chip[aria-pressed="true"] .av{background:var(--accent);color:#fff}
+.dashed{min-height:44px;padding:6px 14px;border-radius:999px;border:1px dashed var(--line3);background:transparent;color:var(--text3);font-size:14px;display:inline-flex;align-items:center;gap:6px}
+.add-child{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.add-child input{min-height:44px;padding:8px 14px;border:1px solid var(--line2);border-radius:999px;width:180px;background:#fff}
+.known-line{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:14px}
+
+/* Buttons */
+.btn{min-height:44px;padding:8px 16px;border-radius:12px;border:1px solid var(--line2);background:#fff;color:var(--text3);font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent-text)}
+.btn-pill{border-radius:999px}
+.btn-link{min-height:44px;padding:6px 10px;border:none;background:transparent;color:var(--accent-text);font-size:14px;font-weight:600;display:inline-flex;align-items:center;gap:6px}
+.btn-link.grey{color:var(--muted)}
+.btn-danger{background:#B91C1C;border-color:#B91C1C;color:#fff}
+.icon-btn{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:#fff;color:var(--text3);display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+
+/* Layout */
+.layout{display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start;padding-top:24px;padding-bottom:96px}
+main{flex:999 1 560px;min-width:0;display:flex;flex-direction:column;gap:20px}
+aside{flex:1 1 280px;min-width:0;display:flex;flex-direction:column;gap:16px}
+main > div:empty{display:none}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px}
+.card h2{font-size:16px;font-weight:700}
+
+/* Banners */
+.flash{padding:12px 16px;border-radius:12px;background:#DCFCE7;color:#166534;font-weight:600;display:flex;align-items:center;gap:10px}
+.demo{padding:12px 16px;border-radius:12px;background:#EFF6FF;border:1px solid #BFDBFE;color:#1E3A8A;display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;font-size:14px}
+.demo .btn-link{color:#1D4ED8;padding:6px 0;text-decoration:underline}
+.alert-warn{padding:10px 14px;border-radius:10px;background:var(--warn-bg);border:1px solid var(--warn-bd);color:var(--warn-fg);font-size:14px;font-weight:600}
+.alert-err{padding:10px 14px;border-radius:10px;background:#FEE2E2;color:#991B1B;font-size:14px;font-weight:600}
+
+/* Form */
+.form{border:2px solid var(--accent);border-radius:18px;padding:20px;display:flex;flex-direction:column;gap:20px;scroll-margin-top:16px}
+.form-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.form-head h2{font-size:22px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+fieldset{border:none;padding:0;margin:0;min-width:0}
+legend,.label{font-size:14px;font-weight:600;padding:0;margin-bottom:8px;display:block}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:14px;font-weight:600}
+.hint{font-size:13px;color:var(--muted)}
+.input{min-height:44px;padding:8px 12px;border:1px solid var(--line2);border-radius:10px;background:#fff;width:100%;color:var(--text)}
+textarea.input{resize:vertical;padding:10px 12px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{min-height:44px;padding:8px 14px;border-radius:999px;border:1px solid var(--line2);background:#fff;color:var(--text2);font-size:14px;font-weight:500;display:inline-flex;align-items:center;gap:6px}
+.chip.sq{border-radius:10px;font-weight:600}
+.chip[aria-pressed="true"]{background:var(--tint);border-color:var(--accent);color:var(--accent-text);font-weight:600}
+.chip.warn[aria-pressed="true"]{background:#FFEDD5;border-color:#EA580C;color:#9A3412}
+.seg2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.seg3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.seg{min-height:48px;padding:8px 10px;border-radius:12px;border:1px solid var(--line2);background:#fff;color:var(--text2);font-weight:600}
+.seg.ok[aria-pressed="true"]{background:#DCFCE7;border-color:#16A34A;color:#166534}
+.seg.bad[aria-pressed="true"]{background:#FFEDD5;border-color:#EA580C;color:#9A3412}
+.seg.mild[aria-pressed="true"]{background:#FEF3C7;border-color:#92400E;color:#92400E}
+.seg.mod[aria-pressed="true"]{background:#FFEDD5;border-color:#9A3412;color:#9A3412}
+.seg.sev[aria-pressed="true"]{background:#FEE2E2;border-color:#991B1B;color:#991B1B}
+.react-box{display:flex;flex-direction:column;gap:16px;padding:16px;border-radius:14px;background:#FFF8F3;border:1px solid #FBD5BC}
+.row-wrap{display:flex;flex-wrap:wrap;gap:16px}
+.row-wrap > fieldset{flex:2 1 260px}
+.row-wrap > .field{flex:1 1 140px}
+.photo-row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.photo-row img{width:96px;height:96px;object-fit:cover;border-radius:12px;border:1px solid var(--line)}
+.file-btn{position:relative;min-height:44px;padding:8px 16px;border-radius:10px;border:1px dashed var(--line3);background:var(--soft);color:var(--text3);font-weight:600;font-size:14px;display:inline-flex;align-items:center;gap:8px;cursor:pointer}
+.file-btn input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}
+.file-btn:focus-within{outline:3px solid var(--accent);outline-offset:2px}
+.form-actions{display:flex;flex-wrap:wrap;gap:10px;justify-content:flex-end;border-top:1px solid #E6EBE9;padding-top:16px}
+.form-actions .btn{min-height:48px;flex:1 1 140px;max-width:240px}
+
+/* Search */
+.search{display:flex;flex-direction:column;gap:12px}
+.search-box{position:relative}
+.search-box svg{position:absolute;left:14px;top:14px;pointer-events:none}
+.search-box input{min-height:48px;width:100%;padding:10px 14px 10px 44px;border:1px solid var(--line2);border-radius:12px;font-size:16px;background:var(--soft)}
+.filters{display:flex;flex-wrap:wrap;gap:8px}
+.filters select{min-height:44px;flex:1 1 150px;padding:8px 10px;border:1px solid var(--line2);border-radius:10px;font-size:14px;background:#fff}
+.toggle{min-height:44px;flex:1 1 170px;padding:8px 12px;border-radius:10px;border:1px solid var(--line2);background:#fff;color:var(--text2);font-size:14px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.toggle[aria-pressed="true"]{background:#FFEDD5;border-color:#EA580C;color:#9A3412}
+.count-row{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;font-size:14px;color:var(--muted)}
+.count-row .btn-link{text-decoration:underline}
+
+/* List */
+.day{display:flex;flex-direction:column;gap:10px}
+.day-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;padding:0 4px}
+.day-head h2{font-size:18px;font-weight:700}
+.day-head .n{margin-left:auto;font-size:13px;color:var(--muted)}
+.entry{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;display:flex;flex-wrap:wrap;gap:14px}
+.entry .when{flex:0 0 64px;display:flex;flex-direction:column;gap:2px}
+.entry .time{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums}
+.entry .type{font-size:13px;color:var(--muted);line-height:1.25}
+.entry .body{flex:1 1 200px;min-width:0;display:flex;flex-direction:column;gap:10px}
+.entry .title-row{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap}
+.entry h3{font-size:17px;font-weight:600;line-height:1.35;flex:1 1 180px;overflow-wrap:anywhere}
+.entry .note{font-size:14px;color:var(--text3);white-space:pre-line;overflow-wrap:anywhere}
+.entry .symptoms{font-size:14px;color:var(--text3)}
+.entry .photo{width:96px;height:96px;object-fit:cover;border-radius:12px;border:1px solid var(--line);flex:0 0 auto}
+.entry-actions{display:flex;gap:4px;flex-wrap:wrap;margin-left:-10px}
+.confirm{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:8px 12px;border-radius:10px;background:#FEF2F2}
+.confirm span{font-size:14px;font-weight:600;color:#991B1B;margin-right:4px}
+.badge{padding:4px 10px;border-radius:999px;font-size:13px;font-weight:700;white-space:nowrap}
+.badge.ok{background:#DCFCE7;color:#166534}
+.badge.mild{background:#FEF3C7;color:#92400E}
+.badge.mod{background:#FFEDD5;color:#9A3412}
+.badge.sev{background:#FEE2E2;color:#991B1B}
+.tags{display:flex;flex-wrap:wrap;gap:6px}
+.tag{padding:2px 10px;border-radius:999px;background:#F1F4F3;color:var(--text2);border:1px solid var(--line);font-size:13px;font-weight:600}
+.tag.warn{background:var(--warn-bg);color:var(--warn-fg);border-color:var(--warn-bd)}
+.empty{background:var(--surface);border:1px dashed var(--line2);border-radius:16px;padding:40px 20px;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center}
+.empty strong{font-size:17px}
+.empty span{color:var(--muted);max-width:420px}
+
+/* Aside */
+.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.stat{background:var(--bg);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:2px}
+.stat b{font-size:26px;font-variant-numeric:tabular-nums}
+.stat span{font-size:13px;color:var(--muted)}
+.stat.react{background:var(--warn-bg)}
+.stat.react b{color:#9A3412}
+.stat.react span{color:#7C2D12}
+.aside-card{display:flex;flex-direction:column;gap:14px}
+.bar-row{display:flex;flex-direction:column;gap:4px}
+.bar-row .lbl{display:flex;justify-content:space-between;font-size:14px}
+.bar{height:8px;border-radius:999px;background:#EEF1F0;overflow:hidden}
+.bar i{display:block;height:8px;border-radius:999px;background:#EA580C}
+.foot-note{font-size:13px;color:var(--muted);border-top:1px solid #E6EBE9;padding-top:12px}
+.aside-actions{display:flex;flex-wrap:wrap;gap:8px}
+.aside-actions .btn{flex:1 1 120px}
+
+/* Floating button (phone) */
+.fab{display:none}
+@media (max-width:640px){
+  .wrap{padding-left:16px;padding-right:16px}
+  .layout{padding-top:16px}
+  .top-row .btn-primary{display:none}
+  .fab{display:flex;position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:10;min-height:56px;padding:0 22px;border-radius:999px;border:none;background:var(--accent);color:#fff;font-weight:700;font-size:16px;align-items:center;gap:8px;box-shadow:0 6px 20px rgba(15,118,110,.35)}
+  .form{padding:16px}
+  .form-actions .btn{max-width:none}
+}
+@media print{
+  body{background:#fff}
+  .top-row .btn-primary,.child-bar,.search,.demo,.flash,.fab,.entry-actions,.confirm,aside .aside-actions,#allergyCard,#formHost{display:none !important}
+  .entry,.card{break-inside:avoid;border-color:#bbb}
+  .layout{display:block;padding:0}
+  aside{margin-top:16px}
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="top-row">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="7"/><circle cx="12" cy="13" r="3.5"/><path d="M4 3v5"/><path d="M20 3v5"/></svg>
+        </div>
+        <div>
+          <h1 class="brand-name">Tanjurić</h1>
+          <span class="brand-sub">Dnevnik prehrane za djecu s alergijama</span>
+        </div>
+      </div>
+      <button type="button" class="btn btn-primary" data-action="new" id="newBtn">
+        <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+        Novi obrok
+      </button>
+    </div>
+    <div class="child-bar" id="childBar" role="group" aria-label="Odabir djeteta"></div>
+    <div class="known-line" id="knownLine"></div>
+  </div>
+</header>
+
+<div class="wrap layout">
+  <main id="main">
+    <div id="demoBanner"></div>
+    <div id="flash" role="status" aria-live="polite"></div>
+    <div id="formHost"></div>
+
+    <section class="card search" aria-label="Pretraživanje">
+      <div class="search-box">
+        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#52605C" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <label for="q" class="sr-only">Pretraži obroke</label>
+        <input id="q" type="search" placeholder="Pretraži jela, alergene, simptome, bilješke…" autocomplete="off">
+      </div>
+      <div class="filters">
+        <label for="fType" class="sr-only">Vrsta obroka</label>
+        <select id="fType"><option value="">Svi obroci</option></select>
+        <label for="fAllergen" class="sr-only">Alergen</label>
+        <select id="fAllergen"><option value="">Svi alergeni</option></select>
+        <label for="fRange" class="sr-only">Razdoblje</label>
+        <select id="fRange">
+          <option value="">Cijelo razdoblje</option>
+          <option value="1">Danas</option>
+          <option value="7">Zadnjih 7 dana</option>
+          <option value="30">Zadnjih 30 dana</option>
+        </select>
+        <button type="button" class="toggle" id="fReaction" data-action="toggle-reaction-filter" aria-pressed="false">
+          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 20h20L12 3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>
+          Samo s reakcijom
+        </button>
+      </div>
+      <div class="count-row">
+        <span id="countText" aria-live="polite"></span>
+        <button type="button" class="btn-link" data-action="clear-filters" id="clearBtn" hidden>Očisti pretragu</button>
+      </div>
+    </section>
+
+    <div id="list"></div>
+  </main>
+
+  <aside aria-label="Pregled">
+    <section class="card aside-card" id="statsCard"></section>
+    <section class="card aside-card" id="allergyCard"></section>
+    <section class="card aside-card" id="dataCard">
+      <h2>Podaci</h2>
+      <div class="aside-actions">
+        <button type="button" class="btn" data-action="export-csv">
+          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></svg>
+          Izvezi CSV
+        </button>
+        <button type="button" class="btn" data-action="print">
+          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/></svg>
+          Ispiši
+        </button>
+      </div>
+      <p class="foot-note">Podaci se spremaju samo u ovom pregledniku na ovom uređaju i ne šalju se nikamo. Za sigurnosnu kopiju povremeno izvezi CSV.</p>
+    </section>
+  </aside>
+</div>
+
+<button type="button" class="fab" data-action="new" id="fab">
+  <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+  Novi obrok
+</button>
+
+<script src="app.js" defer></script>
+</body>
+</html>
