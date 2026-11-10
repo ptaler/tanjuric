@@ -380,7 +380,8 @@
     form: null, editingId: null, confirmDeleteId: null,
     addingChild: false, editingAllergies: false,
     tab: 'meals', formKind: null,
-    medForm: null, medEditingId: null, confirmMedDeleteId: null
+    medForm: null, medEditingId: null, confirmMedDeleteId: null,
+    confirmChildDeleteId: null
   };
   try {
     var savedTab = localStorage.getItem(TAB_KEY);
@@ -727,6 +728,7 @@
     var child = activeChild();
     var stats = $('#statsCard'), ac = $('#allergyCard');
     $('#dataCard').hidden = !child;
+    renderChildDelete(child);
     renderMedCard(child);
     if (!child) { stats.hidden = true; ac.hidden = true; return; }
     stats.hidden = false;
@@ -758,6 +760,30 @@
       }).join('') : '<span class="muted" style="font-size:14px;font-style:italic">Još nema zabilježenih reakcija.</span>') +
       '</div><p class="foot-note">Pregled pomaže uočiti obrasce i pripremiti se za pregled kod liječnika. Ne zamjenjuje liječničku procjenu.</p>';
     renderAllergyCard(child);
+  }
+
+  function renderChildDelete(child) {
+    var el = $('#childDelete');
+    if (!child) { el.innerHTML = ''; return; }
+    if (ui.confirmChildDeleteId !== child.id) {
+      el.innerHTML = '<button type="button" class="btn-link" data-action="child-ask-delete" data-fk="child-del-ask">' + ICON.trash +
+        'Obriši dijete ' + esc(child.name) + '</button>';
+      return;
+    }
+    var counts = [
+      [ofChild(data.entries, child).length, 'obrok', 'obroka', 'obroka'],
+      [ofChild(data.meds, child).length, 'lijek', 'lijeka', 'lijekova'],
+      [ofChild(data.doses, child).length, 'terapija', 'terapije', 'terapija'],
+      [ofChild(data.temps, child).length, 'mjerenje temperature', 'mjerenja temperature', 'mjerenja temperature']
+    ].filter(function (c) { return c[0] > 0; }).map(function (c) { return c[0] + ' ' + plural(c[0], c[1], c[2], c[3]); });
+    var what = counts.length
+      ? 'Obrisat će se i svi zapisi ovog djeteta: ' + (counts.length > 1 ? counts.slice(0, -1).join(', ') + ' i ' + counts[counts.length - 1] : counts[0]) + '.'
+      : 'Za ovo dijete još nema zapisa.';
+    el.innerHTML = '<div class="confirm-box" role="group" aria-labelledby="childDelTitle">' +
+      '<strong id="childDelTitle">Obrisati dijete ' + esc(child.name) + '?</strong>' +
+      '<span>' + esc(what) + ' Brisanje se ne može poništiti.</span>' +
+      '<div class="aside-actions"><button type="button" class="btn" data-action="child-delete-cancel" data-fk="child-del-cancel">Odustani</button>' +
+      '<button type="button" class="btn btn-danger" data-action="child-delete" data-id="' + esc(child.id) + '" data-fk="child-del-do">Obriši</button></div></div>';
   }
 
   function renderAllergyCard(child) {
@@ -1264,6 +1290,30 @@
       case 'add-child-cancel':
         ui.addingChild = false; renderChildren(); break;
       case 'add-child-confirm': addChild(); break;
+      case 'child-ask-delete':
+        ui.confirmChildDeleteId = data.activeChild; renderAside();
+        var cdc = document.querySelector('[data-fk="child-del-cancel"]'); if (cdc) cdc.focus();
+        break;
+      case 'child-delete-cancel':
+        ui.confirmChildDeleteId = null; renderAside();
+        var cda = document.querySelector('[data-fk="child-del-ask"]'); if (cda) cda.focus();
+        break;
+      case 'child-delete': {
+        var gone = data.children.filter(function (c) { return c.id === id; })[0];
+        if (!gone) break;
+        function other(x) { return x.childId !== id; }
+        data.entries = data.entries.filter(other); data.meds = data.meds.filter(other);
+        data.doses = data.doses.filter(other); data.temps = data.temps.filter(other);
+        data.children = data.children.filter(function (c) { return c.id !== id; });
+        data.activeChild = data.children.length ? data.children[0].id : null;
+        ui.confirmChildDeleteId = null; ui.confirmDeleteId = null; ui.editingAllergies = false;
+        ui.medForm = null; ui.medEditingId = null; ui.confirmMedDeleteId = null;
+        if (!data.children.length) ui.addingChild = true;
+        closeForm(); persist(); renderAll();
+        flash('Dijete ' + gone.name + ' i svi njegovi zapisi su obrisani.');
+        if (ui.addingChild && $('#newChild')) $('#newChild').focus();
+        break;
+      }
       case 'f-type':
         f.type = v;
         b.parentNode.querySelectorAll('[data-action="f-type"]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
@@ -1456,6 +1506,7 @@
     if (!user) { setSignInDisabled(false); showScreen('login'); return; }
     var name = (user.user_metadata && (user.user_metadata.full_name || user.user_metadata.name)) || user.email || '';
     $('#userName').textContent = name;
+    $('#userAvatar').textContent = (name.trim().charAt(0) || '?').toUpperCase();
     $('#userName').title = user.email || '';
     loadUserData();
   }
