@@ -9,6 +9,7 @@
   var STORE_KEY = 'tanjuric.v1';
   var TAB_KEY = 'tanjuric.tab';
   var TABS = [
+    { id: 'all', label: 'Sve', newLabel: 'Novi upis' },
     { id: 'meals', label: 'Obroci', newLabel: 'Novi obrok' },
     { id: 'doses', label: 'Terapije', newLabel: 'Nova terapija' },
     { id: 'temps', label: 'Temperatura', newLabel: 'Novo mjerenje' }
@@ -381,7 +382,7 @@
     addingChild: false, editingAllergies: false,
     tab: 'meals', formKind: null,
     medForm: null, medEditingId: null, confirmMedDeleteId: null,
-    confirmChildDeleteId: null
+    confirmChildDeleteId: null, picking: false
   };
   try {
     var savedTab = localStorage.getItem(TAB_KEY);
@@ -545,6 +546,7 @@
   function renderTabs() {
     var child = activeChild();
     var counts = { meals: childEntries(child).length, doses: ofChild(data.doses, child).length, temps: ofChild(data.temps, child).length };
+    counts.all = counts.meals + counts.doses + counts.temps;
     $('#tabs').hidden = !child;
     $('#tabs').innerHTML = TABS.map(function (t) {
       return '<button type="button" class="tab" data-action="tab" data-val="' + t.id + '" data-fk="tab-' + t.id + '" aria-pressed="' + (ui.tab === t.id) + '">' +
@@ -556,7 +558,103 @@
     $('#searchCard').hidden = ui.tab !== 'meals';
     if (ui.tab === 'doses') renderDoses();
     else if (ui.tab === 'temps') renderTemps();
+    else if (ui.tab === 'all') renderTimeline();
     else renderMeals();
+  }
+
+  // ---------- render: vremenska crta (Sve) ----------
+  var TL_ICON = {
+    meal: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="7"/><circle cx="12" cy="13" r="3"/><path d="M4 3v5M20 3v5"/></svg>',
+    react: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>',
+    dose: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7z"/><path d="m8.5 8.5 7 7"/></svg>',
+    temp: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M14 14.8V5a2 2 0 1 0-4 0v9.8a4 4 0 1 0 4 0z"/><path d="M12 9v7"/></svg>'
+  };
+  var TL_ORDER = { meal: 0, react: 1, dose: 2, temp: 2 };
+
+  // Obroci, terapije i mjerenja zajedno. Reakcija s upisanim vremenom pojave
+  // dobiva vlastiti događaj (obrok + N min), da se vidi slijed obrok → reakcija → lijek.
+  function timelineItems(child) {
+    var items = [];
+    childEntries(child).forEach(function (e) {
+      items.push({ kind: 'meal', date: e.date, time: e.time, item: e });
+      var onset = e.onset === '' || e.onset == null ? NaN : Number(e.onset);
+      if (e.reaction && !isNaN(onset) && onset > 0) {
+        var at = new Date(stamp(e.date, e.time) + onset * 60000);
+        items.push({ kind: 'react', date: toIso(at), time: pad(at.getHours()) + ':' + pad(at.getMinutes()), item: e });
+      }
+    });
+    ofChild(data.doses, child).forEach(function (d) { items.push({ kind: 'dose', date: d.date, time: d.time, item: d }); });
+    ofChild(data.temps, child).forEach(function (t) { items.push({ kind: 'temp', date: t.date, time: t.time, item: t }); });
+    return items.sort(function (a, b) {
+      return (b.date + b.time).localeCompare(a.date + a.time) || TL_ORDER[b.kind] - TL_ORDER[a.kind];
+    });
+  }
+
+  function reactHtml(e, time) {
+    var sev = String(e.severity || '').toLowerCase();
+    return '<article class="entry tl-react">' +
+      '<div class="when"><span class="time">' + esc(time) + '</span><span class="type">Reakcija</span></div>' +
+      '<div class="body"><div class="title-row"><h3>' + esc(e.symptoms.length ? e.symptoms.join(', ') : 'Reakcija') + '</h3>' +
+      (sev ? '<span class="badge ' + (SEV_CLASS[e.severity] || 'mild') + '">' + esc(sev) + '</span>' : '') + '</div>' +
+      '<p class="note muted">' + esc(e.onset) + ' min nakon obroka: ' + esc(e.food) + '</p></div></article>';
+  }
+
+  function renderTimeline() {
+    var child = activeChild(), host = $('#list');
+    if (!child) { host.innerHTML = ''; return; }
+    var items = timelineItems(child), known = knownOf(child);
+    if (!items.length) {
+      host.innerHTML = emptyHtml('Još nema upisa', 'Ovdje će se na jednoj vremenskoj crti prikazivati obroci, reakcije, terapije i temperatura. Kreni gumbom „Novi upis”.');
+      return;
+    }
+    var KIND_NAME = { meal: 'Obrok', react: 'Reakcija', dose: 'Terapija', temp: 'Temperatura' };
+    host.innerHTML = groupByDay(items).map(function (g) {
+      var l = dayLabel(g.date);
+      var n = g.items.filter(function (x) { return x.kind !== 'react'; }).length;
+      var rows = g.items.map(function (x, i) {
+        var card = x.kind === 'meal' ? entryHtml(x.item, known) : x.kind === 'dose' ? doseHtml(x.item)
+          : x.kind === 'temp' ? tempHtml(x.item) : reactHtml(x.item, x.time);
+        var gap = '';
+        if (i > 0) {
+          var prev = g.items[i - 1], ms = stamp(prev.date, prev.time) - stamp(x.date, x.time);
+          gap = '<div class="tl-gap" aria-hidden="true">' + (ms > 0 ? durText(ms) + ' kasnije ↑' : 'u isto vrijeme') + '</div>';
+        }
+        return gap + '<div class="tl-item"><span class="tl-node ' + x.kind + '" role="img" aria-label="' + KIND_NAME[x.kind] + '">' + TL_ICON[x.kind] + '</span>' + card + '</div>';
+      }).join('');
+      return '<section class="day"><div class="day-head"><h2>' + esc(l.rel) + '</h2><span class="muted" style="font-size:14px">' + esc(l.full) + '</span>' +
+        '<span class="n">' + n + ' ' + plural(n, 'upis', 'upisa', 'upisa') + '</span></div><div class="tl">' + rows + '</div></section>';
+    }).join('<div style="height:10px"></div>');
+  }
+
+  function pickerHtml() {
+    var child = activeChild();
+    function opt(kind, title, sub) {
+      return '<button type="button" class="pick-opt" data-action="pick-new" data-val="' + kind + '" data-fk="pick-' + kind + '">' +
+        '<span class="tl-node ' + kind + '" aria-hidden="true">' + TL_ICON[kind] + '</span><span><strong>' + title + '</strong><span class="muted">' + sub + '</span></span></button>';
+    }
+    return '<section class="card form" id="formCard" aria-labelledby="pickTitle">' +
+      '<div class="form-head"><div><h2 id="pickTitle">Što upisuješ?</h2><p class="muted" style="font-size:14px">Dijete: ' + esc(child ? child.name : '') + '</p></div>' +
+      '<button type="button" class="icon-btn" data-action="close-form" aria-label="Zatvori">' + ICON.x + '</button></div>' +
+      '<div class="pick-grid">' + opt('meal', 'Obrok', 'Što je jelo i je li bilo reakcije') +
+      opt('dose', 'Terapija', 'Lijek i doza') + opt('temp', 'Temperatura', 'Izmjerena vrijednost') + '</div></section>';
+  }
+
+  function renderAllStats(child) {
+    var now = Date.now();
+    function in24(x) { var s = stamp(x.date, x.time); return s <= now && now - s < 86400000; }
+    var meals24 = childEntries(child).filter(in24).length;
+    var doses24 = ofChild(data.doses, child).filter(in24).length;
+    var react7 = childEntries(child).filter(function (e) { return e.reaction && daysAgo(e.date) < 7; }).length;
+    var temps24 = ofChild(data.temps, child).filter(in24).map(function (t) { return t.value; });
+    var maxT = temps24.length ? Math.max.apply(null, temps24) : null;
+    function leg(kind, label) { return '<span><span class="tl-node sm ' + kind + '" aria-hidden="true">' + TL_ICON[kind] + '</span>' + label + '</span>'; }
+    return '<h2>Pregled — ' + esc(child.name) + '</h2>' +
+      '<div class="stats"><div class="stat"><b>' + meals24 + '</b><span>' + plural(meals24, 'obrok', 'obroka', 'obroka') + ' u zadnja 24 h</span></div>' +
+      '<div class="stat react"><b>' + react7 + '</b><span>' + plural(react7, 'reakcija', 'reakcije', 'reakcija') + ' u zadnjih 7 dana</span></div>' +
+      '<div class="stat"><b>' + doses24 + '</b><span>' + plural(doses24, 'doza', 'doze', 'doza') + ' u zadnja 24 h</span></div>' +
+      '<div class="stat"><b>' + (maxT == null ? '—' : esc(fmtNum(maxT.toFixed(1))) + '°') + '</b><span>najviša temperatura u 24 h</span></div></div>' +
+      '<div class="tl-legend">' + leg('meal', 'Obrok') + leg('react', 'Reakcija') + leg('dose', 'Terapija') + leg('temp', 'Temperatura') + '</div>' +
+      '<p class="foot-note">Reakcija se prikazuje kao zaseban događaj kad je u obroku upisano nakon koliko se minuta javila.</p>';
   }
 
   function doseHtml(d) {
@@ -733,8 +831,8 @@
     if (!child) { stats.hidden = true; ac.hidden = true; return; }
     stats.hidden = false;
     ac.hidden = ui.tab !== 'meals';
-    if (ui.tab === 'doses' || ui.tab === 'temps') {
-      stats.innerHTML = ui.tab === 'doses' ? renderDoseStats(child) : renderTempStats(child);
+    if (ui.tab === 'doses' || ui.tab === 'temps' || ui.tab === 'all') {
+      stats.innerHTML = ui.tab === 'doses' ? renderDoseStats(child) : ui.tab === 'temps' ? renderTempStats(child) : renderAllStats(child);
       return;
     }
 
@@ -811,7 +909,7 @@
     $('#newBtn .new-label').textContent = label;
     $('#fab .new-label').textContent = label;
     $('#newBtn').disabled = noChild;
-    $('#fab').hidden = noChild || !!ui.form;
+    $('#fab').hidden = noChild || !!ui.form || ui.picking;
     if (fk) {
       var el = document.querySelector('[data-fk="' + (window.CSS && CSS.escape ? CSS.escape(fk) : fk) + '"]');
       if (el) el.focus();
@@ -843,8 +941,8 @@
 
   function renderForm() {
     var host = $('#formHost');
-    $('#fab').hidden = !!ui.form || !activeChild();
-    if (!ui.form) { host.innerHTML = ''; return; }
+    $('#fab').hidden = !!ui.form || ui.picking || !activeChild();
+    if (!ui.form) { host.innerHTML = ui.picking ? pickerHtml() : ''; return; }
     if (ui.formKind === 'dose') renderDoseForm(host);
     else if (ui.formKind === 'temp') renderTempForm(host);
     else renderMealForm(host);
@@ -990,7 +1088,7 @@
 
   function openForm(kind, entry) {
     if (!activeChild()) return;
-    ui.confirmDeleteId = null;
+    ui.confirmDeleteId = null; ui.picking = false;
     ui.formKind = kind;
     var n = nowParts();
     if (kind === 'dose') {
@@ -1032,7 +1130,7 @@
   }
 
   function closeForm() {
-    ui.form = null; ui.editingId = null; ui.formKind = null;
+    ui.form = null; ui.editingId = null; ui.formKind = null; ui.picking = false;
     renderForm();
   }
 
@@ -1174,7 +1272,19 @@
     function hrDate(iso) { var d = parseIso(iso); return pad(d.getDate()) + '.' + pad(d.getMonth() + 1) + '.' + d.getFullYear() + '.'; }
     function cell(v) { v = String(v == null ? '' : v); return /[";\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
     var head, rows, kindName;
-    if (ui.tab === 'doses') {
+    if (ui.tab === 'all') {
+      kindName = 'sve';
+      head = ['Datum', 'Vrijeme', 'Vrsta', 'Opis', 'Detalji', 'Bilješka'];
+      rows = timelineItems(child).reverse().map(function (x) {
+        var it = x.item;
+        if (x.kind === 'meal') return [hrDate(x.date), x.time, 'Obrok · ' + it.type, it.food,
+          [it.allergens.length ? 'Alergeni: ' + it.allergens.join(', ') : '', it.reaction ? 'Reakcija: ' + it.severity : 'Bez reakcije'].filter(Boolean).join('; '), it.note];
+        if (x.kind === 'react') return [hrDate(x.date), x.time, 'Reakcija', it.symptoms.join(', ') || 'Reakcija',
+          (it.severity ? it.severity + '; ' : '') + it.onset + ' min nakon obroka: ' + it.food, ''];
+        if (x.kind === 'dose') return [hrDate(x.date), x.time, 'Terapija', doseMedName(it), doseText(it.dose, it.unit), it.note];
+        return [hrDate(x.date), x.time, 'Temperatura', fmtNum(it.value.toFixed(1)) + ' °C', it.method, it.note];
+      });
+    } else if (ui.tab === 'doses') {
       kindName = 'terapije';
       head = ['Datum', 'Vrijeme', 'Lijek', 'Doza', 'Jedinica', 'Bilješka'];
       rows = ofChild(data.doses, child).sort(asc).map(function (d) {
@@ -1224,12 +1334,20 @@
     var a = b.getAttribute('data-action'), v = b.getAttribute('data-val'), id = b.getAttribute('data-id');
     var f = ui.form;
     switch (a) {
-      case 'new': openForm(ui.tab === 'doses' ? 'dose' : ui.tab === 'temps' ? 'temp' : 'meal', null); break;
+      case 'new':
+        if (ui.tab !== 'all') { openForm(ui.tab === 'doses' ? 'dose' : ui.tab === 'temps' ? 'temp' : 'meal', null); break; }
+        if (!activeChild()) break;
+        ui.form = null; ui.editingId = null; ui.formKind = null; ui.confirmDeleteId = null; ui.picking = true;
+        renderForm(); renderList();
+        $('#formCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        $('[data-fk="pick-meal"]').focus({ preventScroll: true });
+        break;
+      case 'pick-new': openForm(v, null); break;
       case 'tab':
         if (ui.tab === v) break;
         ui.tab = v; ui.confirmDeleteId = null; ui.medForm = null; ui.medEditingId = null; ui.confirmMedDeleteId = null;
         try { localStorage.setItem(TAB_KEY, v); } catch (e) { /* ignore */ }
-        if (ui.form) closeForm();
+        if (ui.form || ui.picking) closeForm();
         renderAll(); break;
       case 'edit-dose':
         openForm('dose', data.doses.filter(function (x) { return x.id === id; })[0]); break;
