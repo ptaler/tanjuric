@@ -1425,10 +1425,18 @@
   function signIn() {
     var e = $('#authError'); e.hidden = true;
     if (!sb) { e.hidden = false; e.textContent = 'Prijava trenutno nije dostupna (nedostaje konfiguracija).'; return; }
-    $('#signInBtn').disabled = true;
+    setSignInDisabled(true);
     sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + location.pathname } }).then(function (res) {
-      if (res.error) { $('#signInBtn').disabled = false; e.hidden = false; e.textContent = 'Prijava nije uspjela: ' + res.error.message; }
+      if (res.error) {
+        setSignInDisabled(false); e.hidden = false; e.textContent = 'Prijava nije uspjela: ' + res.error.message;
+        e.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      }
     });
+  }
+
+  // Na početnoj stranici ima više gumba za prijavu (izbornik, hero, kraj stranice).
+  function setSignInDisabled(on) {
+    document.querySelectorAll('[data-action="sign-in"]').forEach(function (b) { b.disabled = on; });
   }
 
   function signOut() {
@@ -1445,7 +1453,7 @@
     auth.user = user;
     data = emptyData(); synced = {};
     ui.form = null; ui.editingId = null; ui.formKind = null; ui.legacy = null; ui.addingChild = false;
-    if (!user) { $('#signInBtn').disabled = false; showScreen('login'); return; }
+    if (!user) { setSignInDisabled(false); showScreen('login'); return; }
     var name = (user.user_metadata && (user.user_metadata.full_name || user.user_metadata.name)) || user.email || '';
     $('#userName').textContent = name;
     $('#userName').title = user.email || '';
