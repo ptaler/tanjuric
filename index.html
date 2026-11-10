@@ -207,12 +207,8 @@ textarea.input{resize:vertical;padding:10px 12px}
 
 /* Auth */
 .auth-screen{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px 16px}
-.auth-card{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:32px 24px;max-width:400px;width:100%;display:flex;flex-direction:column;align-items:center;gap:16px;text-align:center}
-.auth-card .logo{width:56px;height:56px;border-radius:16px}
-.auth-card h1{font-size:26px;font-weight:700}
 .google-btn{width:100%;min-height:52px;font-size:16px;color:var(--text);border-color:var(--line3)}
 .google-btn:hover{background:var(--soft)}
-.auth-card .alert-err{width:100%}
 .user-row{display:flex;align-items:center;gap:6px 12px;flex-wrap:wrap;font-size:13px;margin-top:-6px}
 .user-name{font-weight:600;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60vw}
 .sync{padding:2px 10px;border-radius:999px;font-weight:600}
@@ -220,6 +216,143 @@ textarea.input{resize:vertical;padding:10px 12px}
 .sync.saving{background:#EEF1F0;color:var(--muted)}
 .sync.error{background:#FEE2E2;color:#991B1B}
 .user-row .btn-link{min-height:32px;padding:4px 6px;margin-left:auto}
+
+/* Landing (prije prijave) */
+.lp{min-height:100vh;overflow-x:clip}
+.lp-wrap{max-width:1120px;margin:0 auto;padding:0 20px}
+.lp-nav{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 0;position:relative;z-index:2}
+.lp-nav .btn{min-height:40px;padding:6px 18px}
+.lp-hero{position:relative;padding:24px 0 80px}
+.lp-blob{position:absolute;border-radius:50%;pointer-events:none;z-index:0}
+.lp-blob.b1{width:640px;height:640px;right:-200px;top:-180px;background:radial-gradient(closest-side,#C9E7E2,rgba(201,231,226,0))}
+.lp-blob.b2{width:420px;height:420px;left:-200px;bottom:-60px;background:radial-gradient(closest-side,#FDE4CC,rgba(253,228,204,0))}
+.lp-hero-grid{position:relative;z-index:1;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:48px;align-items:center}
+.lp-eyebrow{display:inline-flex;align-items:center;gap:8px;padding:6px 14px 6px 8px;border-radius:999px;background:var(--surface);border:1px solid var(--line);font-size:13px;font-weight:600;color:var(--accent-text)}
+.lp-eyebrow i{width:22px;height:22px;border-radius:50%;background:var(--tint);display:flex;align-items:center;justify-content:center}
+.lp h1{font-size:clamp(34px,5vw,56px);line-height:1.04;letter-spacing:-.03em;font-weight:700;margin:18px 0 18px;text-wrap:balance}
+.lp h1 em{font-style:normal;color:var(--accent);background:linear-gradient(transparent 68%,#FDE4CC 68%)}
+.lp-lead{font-size:18px;line-height:1.55;color:var(--text3);max-width:520px;text-wrap:pretty}
+.lp-cta{display:flex;flex-direction:column;gap:10px;margin-top:30px;max-width:380px}
+.lp .google-btn{background:#fff;box-shadow:0 10px 24px -12px rgba(23,33,31,.35)}
+.lp-trust{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:18px;font-size:13px;font-weight:500;color:var(--muted)}
+.lp-trust span{display:inline-flex;align-items:center;gap:6px}
+.lp-visual{position:relative;min-height:560px;display:flex;justify-content:center;align-items:center}
+.lp-phone{width:300px;border-radius:44px;background:#17211F;padding:10px;box-shadow:0 40px 70px -24px rgba(23,33,31,.5),0 14px 30px -14px rgba(15,118,110,.35);transform:rotate(2deg)}
+.lp-screen{background:var(--bg);border-radius:35px;overflow:hidden;padding:12px 12px 16px;display:flex;flex-direction:column;gap:9px;font-size:12px;height:540px}
+.lp-notch{width:92px;height:24px;border-radius:999px;background:#17211F;margin:0 auto 2px;flex:0 0 auto}
+.lp-app-top{display:flex;align-items:center;gap:8px;background:#fff;border-radius:14px;padding:8px 10px;border:1px solid var(--line)}
+.lp-app-top .logo{width:26px;height:26px;border-radius:8px}
+.lp-app-top b{font-size:14px}
+.lp-kid{margin-left:auto;display:inline-flex;align-items:center;gap:6px;padding:3px 10px 3px 3px;border-radius:999px;background:var(--tint);color:var(--accent-text);font-weight:700;font-size:12px}
+.lp-kid i{width:20px;height:20px;border-radius:50%;background:var(--accent);color:#fff;font-style:normal;display:flex;align-items:center;justify-content:center;font-size:11px}
+.lp-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:4px}
+.lp-tabs span{padding:6px 2px;border-radius:8px;text-align:center;font-weight:600;color:var(--text3);font-size:11px}
+.lp-tabs span.on{background:var(--tint);color:var(--accent-text)}
+.lp-day{font-weight:700;font-size:13px;padding:2px 4px 0}
+.lp-day small{font-weight:500;color:var(--muted);font-size:11px;margin-left:4px}
+.lp-entry{background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px;display:flex;gap:10px}
+.lp-entry .t{font-weight:700;font-size:14px;font-variant-numeric:tabular-nums;flex:0 0 42px;line-height:1.2}
+.lp-entry .t small{display:block;font-weight:500;font-size:10px;color:var(--muted);margin-top:2px}
+.lp-entry .b{display:flex;flex-direction:column;gap:6px;min-width:0}
+.lp-entry .b strong{font-size:12.5px;font-weight:600;line-height:1.3}
+.lp-entry .tags{gap:4px}
+.lp-screen .badge{font-size:10.5px;padding:2px 8px;align-self:flex-start}
+.lp-screen .tag{font-size:10.5px;padding:1px 7px}
+.lp-fab{align-self:flex-end;margin-top:auto;background:var(--accent);color:#fff;font-weight:700;border-radius:999px;padding:9px 16px;font-size:12px;box-shadow:0 6px 16px rgba(15,118,110,.35)}
+.lp-float{position:absolute;z-index:2;background:#fff;border:1px solid var(--line);border-radius:18px;padding:12px 16px 12px 12px;display:flex;align-items:center;gap:12px;box-shadow:0 22px 44px -18px rgba(23,33,31,.35);font-size:13px;color:var(--muted)}
+.lp-float b{font-size:18px;display:block;line-height:1.15;color:var(--text);font-variant-numeric:tabular-nums}
+.lp-float .ic{width:42px;height:42px;border-radius:13px;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+.lp-float-temp{left:-6px;top:96px;transform:rotate(-4deg)}
+.lp-float-dose{right:-14px;bottom:110px;transform:rotate(3deg)}
+.lp-plate{position:absolute;z-index:2;width:150px;right:-28px;top:-34px;transform:rotate(-10deg)}
+.lp-section{padding:80px 0}
+.lp-head{max-width:660px;margin:0 auto 44px;text-align:center;display:flex;flex-direction:column;gap:12px;align-items:center}
+.lp-kicker{font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+.lp h2{font-size:clamp(28px,3.6vw,40px);line-height:1.12;letter-spacing:-.025em;font-weight:700;text-wrap:balance}
+.lp-sub{font-size:17px;line-height:1.55;color:var(--muted);text-wrap:pretty}
+.lp-features{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
+.lp-feature{background:#fff;border:1px solid var(--line);border-radius:24px;padding:20px 20px 24px;display:flex;flex-direction:column;gap:14px}
+.lp-feature h3{font-size:21px;font-weight:700;letter-spacing:-.01em;margin-top:4px}
+.lp-feature p{color:var(--text3);line-height:1.55}
+.lp-art{height:168px;border-radius:18px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.lp-art svg{width:190px;height:auto}
+.lp-art.teal{background:linear-gradient(135deg,#D7EEEA,#F1F8F7)}
+.lp-art.violet{background:linear-gradient(135deg,#E9E3FD,#F7F5FF)}
+.lp-art.warm{background:linear-gradient(135deg,#FFE4CC,#FFF7ED)}
+.lp-art::after{content:"";position:absolute;width:150px;height:150px;border-radius:50%;background:rgba(255,255,255,.45);right:-40px;top:-50px}
+.lp-mini{margin-top:auto;background:var(--soft);border:1px solid var(--line);border-radius:16px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;font-size:13px}
+.lp-mini-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.lp-mini-row .badge{margin-left:auto;font-size:12px;padding:2px 9px}
+.lp-mini .tag{font-size:12px}
+.lp-mini svg{width:100%;height:auto;display:block}
+.lp-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;position:relative}
+.lp-steps::before{content:"";position:absolute;left:12%;right:12%;top:46px;border-top:2px dashed var(--line3);z-index:0}
+.lp-step{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;text-align:center;gap:12px;padding:0 12px}
+.lp-step .num{width:92px;height:92px;border-radius:28px;background:#fff;border:1px solid var(--line);box-shadow:0 14px 30px -16px rgba(15,118,110,.45);display:flex;align-items:center;justify-content:center;position:relative}
+.lp-step .num span{position:absolute;top:-8px;right:-8px;width:28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;border:3px solid var(--bg)}
+.lp-step h3{font-size:19px;font-weight:700;margin-top:6px}
+.lp-step p{color:var(--muted);max-width:300px;line-height:1.55}
+.lp-band{position:relative;overflow:hidden;background:#0E3F3B;color:#D5E9E6;border-radius:32px;padding:56px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:56px;align-items:center}
+.lp-band::before,.lp-band::after{content:"";position:absolute;border-radius:50%;pointer-events:none}
+.lp-band::before{width:420px;height:420px;right:-120px;bottom:-200px;background:radial-gradient(closest-side,rgba(45,212,191,.28),rgba(45,212,191,0))}
+.lp-band::after{width:300px;height:300px;left:-120px;top:-140px;background:radial-gradient(closest-side,rgba(253,186,116,.2),rgba(253,186,116,0))}
+.lp-band > *{position:relative;z-index:1}
+.lp-band .lp-kicker{color:#5EEAD4}
+.lp-band h2{color:#fff;margin:12px 0 14px}
+.lp-band p{line-height:1.6}
+.lp-band ul{list-style:none;padding:0;margin:24px 0 0;display:flex;flex-direction:column;gap:14px}
+.lp-band li{display:flex;gap:12px;align-items:flex-start;line-height:1.5}
+.lp-band li i{width:26px;height:26px;border-radius:50%;background:rgba(94,234,212,.16);display:flex;align-items:center;justify-content:center;flex:0 0 auto;margin-top:-1px}
+.lp-band li b{color:#fff;font-weight:600}
+.lp-paper{background:#fff;color:var(--text);border-radius:20px;padding:22px;box-shadow:0 40px 70px -30px rgba(0,0,0,.6);transform:rotate(-1.5deg);display:flex;flex-direction:column;gap:14px;font-size:14px}
+.lp-paper h3{font-size:17px;font-weight:700}
+.lp-paper .stat b{font-size:24px}
+.lp-paper-foot{display:flex;gap:8px;border-top:1px solid #E6EBE9;padding-top:14px}
+.lp-paper-foot span{flex:1;min-height:40px;border-radius:10px;border:1px solid var(--line2);display:flex;align-items:center;justify-content:center;gap:6px;font-weight:600;color:var(--text3);font-size:13px}
+.lp-trust-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+.lp-trust-item{background:#fff;border:1px solid var(--line);border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:8px}
+.lp-trust-item .ic{width:44px;height:44px;border-radius:14px;background:var(--tint);display:flex;align-items:center;justify-content:center;margin-bottom:4px}
+.lp-trust-item b{font-size:16px}
+.lp-trust-item span{font-size:14px;color:var(--muted);line-height:1.5}
+.lp-final{position:relative;overflow:hidden;border-radius:32px;background:linear-gradient(140deg,#0F766E,#115E59 60%,#134E4A);color:#D5EFEB;padding:56px 24px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:14px}
+.lp-final h2{color:#fff;max-width:620px}
+.lp-final p{max-width:520px;font-size:17px;line-height:1.55}
+.lp-final .lp-cta{width:100%;margin-top:14px}
+.lp-final .google-btn{border-color:#fff}
+.lp-final .alert-err{text-align:left}
+.lp-final-art{position:absolute;opacity:.16;pointer-events:none}
+.lp-final-art.a1{width:220px;left:-50px;bottom:-60px;transform:rotate(18deg)}
+.lp-final-art.a2{width:160px;right:-30px;top:-40px;transform:rotate(-14deg)}
+.lp-foot{padding:36px 0 44px;display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;font-size:13px;color:var(--muted)}
+.lp-foot .brand-name{font-size:15px}
+@media (max-width:900px){
+  .lp-hero-grid{grid-template-columns:minmax(0,1fr);gap:16px}
+  .lp-visual{min-height:0;padding:28px 0 8px}
+  .lp-features{grid-template-columns:minmax(0,1fr)}
+  .lp-steps{grid-template-columns:minmax(0,1fr);gap:32px}
+  .lp-steps::before{display:none}
+  .lp-band{grid-template-columns:minmax(0,1fr);padding:36px 24px;gap:36px;border-radius:26px}
+  .lp-trust-row{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:640px){
+  .lp-wrap{padding:0 16px}
+  .lp-hero{padding:8px 0 48px}
+  .lp-lead{font-size:17px}
+  .lp-cta{max-width:none}
+  .lp-phone{width:262px;border-radius:40px}
+  .lp-screen{height:440px;border-radius:31px}
+  .lp-entry-extra{display:none}
+  .lp-float{padding:10px 12px 10px 10px;font-size:12px}
+  .lp-float b{font-size:16px}
+  .lp-float .ic{width:36px;height:36px}
+  .lp-float-temp{left:-8px;top:64px}
+  .lp-float-dose{right:-10px;bottom:70px}
+  .lp-plate{width:104px;right:-22px;top:-4px}
+  .lp-section{padding:56px 0}
+  .lp-head{margin-bottom:32px}
+  .lp-trust-row{grid-template-columns:minmax(0,1fr)}
+  .lp-final{padding:44px 20px;border-radius:26px}
+}
 
 /* Floating button (phone) */
 .fab{display:none}
@@ -241,21 +374,281 @@ textarea.input{resize:vertical;padding:10px 12px}
 </style>
 </head>
 <body>
-<section class="auth-screen" id="authScreen" hidden aria-labelledby="authTitle">
-  <div class="auth-card">
-    <div class="logo" aria-hidden="true">
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="7"/><circle cx="12" cy="13" r="3.5"/><path d="M4 3v5"/><path d="M20 3v5"/></svg>
+<div class="lp" id="authScreen" hidden>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="gLogo" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></symbol>
+  <symbol id="lpLogo" viewBox="0 0 24 24"><g fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="7"/><circle cx="12" cy="13" r="3.5"/><path d="M4 3v5"/><path d="M20 3v5"/></g></symbol>
+  <symbol id="lpCheck" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="lpPlate" viewBox="0 0 220 220">
+    <circle cx="110" cy="110" r="100" fill="#fff"/>
+    <circle cx="110" cy="110" r="100" fill="none" stroke="#DDE3E1" stroke-width="2"/>
+    <circle cx="110" cy="110" r="76" fill="#F8FAF9" stroke="#E2F0EF" stroke-width="4"/>
+    <path d="M64 96c3-20 28-30 46-23 16 6 21 21 14 33-8 15-33 19-48 12-11-5-14-13-12-22z" fill="#FFF1C9"/>
+    <g fill="#F2DC9F"><ellipse cx="82" cy="92" rx="4" ry="2.2" transform="rotate(-20 82 92)"/><ellipse cx="96" cy="84" rx="4" ry="2.2" transform="rotate(15 96 84)"/><ellipse cx="104" cy="100" rx="4" ry="2.2" transform="rotate(-35 104 100)"/><ellipse cx="88" cy="106" rx="4" ry="2.2" transform="rotate(10 88 106)"/><ellipse cx="112" cy="88" rx="4" ry="2.2" transform="rotate(-10 112 88)"/></g>
+    <path d="M118 128c9-14 34-15 41 0 6 13-6 28-24 28-16 0-26-15-17-28z" fill="#E7A35E"/>
+    <path d="M128 134c7-5 18-5 23 2M126 144c6-3 13-3 18 1" stroke="#C5803F" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+    <g><circle cx="78" cy="140" r="11" fill="#F97316"/><circle cx="78" cy="140" r="5.5" fill="#FDBA74"/><circle cx="98" cy="154" r="10" fill="#F97316"/><circle cx="98" cy="154" r="5" fill="#FDBA74"/><circle cx="74" cy="161" r="9" fill="#FB923C"/><circle cx="74" cy="161" r="4.5" fill="#FED7AA"/></g>
+    <g><path d="M146 92l-6 18M150 92l2 18" stroke="#65A30D" stroke-width="5" stroke-linecap="round"/><circle cx="136" cy="80" r="11" fill="#16A34A"/><circle cx="152" cy="74" r="12" fill="#22C55E"/><circle cx="164" cy="88" r="10" fill="#16A34A"/><circle cx="148" cy="90" r="9" fill="#15803D"/></g>
+  </symbol>
+</svg>
+
+<div class="lp-wrap">
+  <nav class="lp-nav" aria-label="Glavna">
+    <div class="brand">
+      <div class="logo" aria-hidden="true"><svg width="24" height="24"><use href="#lpLogo"/></svg></div>
+      <span class="brand-name">Tanjurić</span>
     </div>
-    <h1 id="authTitle">Tanjurić</h1>
-    <p class="muted">Dnevnik prehrane, terapija i temperature za djecu s alergijama.</p>
-    <button type="button" class="btn google-btn" data-action="sign-in" id="signInBtn">
-      <svg aria-hidden="true" width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>
-      Prijava s Google računom
-    </button>
-    <div id="authError" class="alert-err" role="alert" hidden></div>
-    <p class="foot-note">Podaci se spremaju na tvoj račun, na poslužitelju u Europskoj uniji (Frankfurt), i vidljivi su samo tebi.</p>
+    <button type="button" class="btn btn-pill" data-action="sign-in">Prijava</button>
+  </nav>
+</div>
+
+<section class="lp-hero" aria-labelledby="authTitle">
+  <div class="lp-blob b1" aria-hidden="true"></div>
+  <div class="lp-blob b2" aria-hidden="true"></div>
+  <div class="lp-wrap lp-hero-grid">
+    <div>
+      <span class="lp-eyebrow"><i aria-hidden="true"><svg width="13" height="13" viewBox="0 0 24 24" fill="#0F766E"><path d="M12 21s-7.5-4.6-9.6-9.3C.9 8.3 3 4.5 6.7 4.5c2.2 0 3.7 1.2 5.3 3.1 1.6-1.9 3.1-3.1 5.3-3.1 3.7 0 5.8 3.8 4.3 7.2C19.5 16.4 12 21 12 21z"/></svg></i>Za roditelje djece s alergijama</span>
+      <h1 id="authTitle">Dnevnik koji pamti <em>svaki zalogaj</em>, lijek i temperaturu</h1>
+      <p class="lp-lead">Tanjurić je dnevnik u koji roditelji djece s alergijama i osjetljivom prehranom upisuju obroke, reakcije, terapije i temperaturu. Kod liječnika sve imaš na jednom mjestu.</p>
+      <div class="lp-cta">
+        <button type="button" class="btn google-btn" data-action="sign-in" id="signInBtn">
+          <svg aria-hidden="true" width="18" height="18"><use href="#gLogo"/></svg>
+          Prijava s Google računom
+        </button>
+        <div id="authError" class="alert-err" role="alert" hidden></div>
+      </div>
+      <div class="lp-trust">
+        <span><svg aria-hidden="true" width="16" height="16" style="color:var(--accent)"><use href="#lpCheck"/></svg>Bez nove lozinke</span>
+        <span><svg aria-hidden="true" width="16" height="16" style="color:var(--accent)"><use href="#lpCheck"/></svg>Podaci u EU</span>
+        <span><svg aria-hidden="true" width="16" height="16" style="color:var(--accent)"><use href="#lpCheck"/></svg>Vidljivo samo tebi</span>
+      </div>
+    </div>
+
+    <div class="lp-visual" aria-hidden="true">
+      <svg class="lp-plate" viewBox="0 0 220 220"><use href="#lpPlate"/></svg>
+      <div class="lp-phone">
+        <div class="lp-screen">
+          <div class="lp-notch"></div>
+          <div class="lp-app-top">
+            <div class="logo"><svg width="15" height="15"><use href="#lpLogo"/></svg></div>
+            <b>Tanjurić</b>
+            <span class="lp-kid"><i>L</i>Lea</span>
+          </div>
+          <div class="lp-tabs"><span class="on">Obroci</span><span>Terapije</span><span>Temperatura</span></div>
+          <div class="lp-day">Danas <small>utorak</small></div>
+          <div class="lp-entry">
+            <div class="t">12:30<small>Ručak</small></div>
+            <div class="b"><strong>Piletina s rižom i kuhanom mrkvom</strong><span class="badge ok">Bez reakcije</span></div>
+          </div>
+          <div class="lp-entry">
+            <div class="t">10:00<small>Užina</small></div>
+            <div class="b"><strong>Keks iz vrtića</strong><span class="badge mod">Reakcija · umjerena</span>
+              <div class="tags"><span class="tag">Gluten</span><span class="tag warn">Mlijeko · alergija</span></div></div>
+          </div>
+          <div class="lp-entry lp-entry-extra">
+            <div class="t">08:10<small>Doručak</small></div>
+            <div class="b"><strong>Zobena kaša s bananom</strong><div class="tags"><span class="tag">Gluten</span><span class="tag">Orašasti plodovi</span></div></div>
+          </div>
+          <span class="lp-fab">+ Novi obrok</span>
+        </div>
+      </div>
+      <div class="lp-float lp-float-temp">
+        <span class="ic" style="background:#FFEDD5"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C2410C" stroke-width="2" stroke-linecap="round"><path d="M14 14.8V5a2 2 0 1 0-4 0v9.8a4 4 0 1 0 4 0z"/><path d="M12 9v7"/></svg></span>
+        <span><b>38,4 °C</b>Vrućica · uho</span>
+      </div>
+      <div class="lp-float lp-float-dose">
+        <span class="ic" style="background:#EDE9FE"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6D28D9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7z"/><path d="m8.5 8.5 7 7"/></svg></span>
+        <span><b>Paracetamol 5 ml</b>prije 3 h</span>
+      </div>
+    </div>
   </div>
 </section>
+
+<section class="lp-section" aria-labelledby="lpFeatTitle">
+  <div class="lp-wrap">
+    <div class="lp-head">
+      <span class="lp-kicker">Tri dnevnika u jednom</span>
+      <h2 id="lpFeatTitle">Sve što pedijatar pita, upisano kad se dogodilo</h2>
+      <p class="lp-sub">Umjesto bilješki na papiriću i poruka samoj sebi, svaki obrok, lijek i mjerenje imaju točno vrijeme i ostaju zapisani.</p>
+    </div>
+    <div class="lp-features">
+      <article class="lp-feature">
+        <div class="lp-art teal" aria-hidden="true">
+          <svg viewBox="0 0 160 120">
+            <ellipse cx="80" cy="110" rx="54" ry="6" fill="#0F766E" opacity=".14"/>
+            <path d="M62 24c-6 6 6 10 0 18M80 16c-6 6 6 10 0 18M98 24c-6 6 6 10 0 18" stroke="#8CC9C1" stroke-width="3" fill="none" stroke-linecap="round"/>
+            <circle cx="60" cy="60" r="14" fill="#FDE68A"/><circle cx="83" cy="53" r="17" fill="#86EFAC"/><circle cx="104" cy="61" r="13" fill="#FDBA74"/><circle cx="73" cy="66" r="10" fill="#FCA5A5"/><circle cx="94" cy="68" r="8" fill="#FEF3C7"/>
+            <path d="M26 64h108c0 26-23 42-54 42S26 90 26 64z" fill="#0F766E"/>
+            <rect x="22" y="60" width="116" height="8" rx="4" fill="#0C5E58"/>
+            <path d="M42 76c6 10 18 18 36 19" stroke="#fff" stroke-opacity=".35" stroke-width="4" fill="none" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <h3>Obroci i reakcije</h3>
+        <p>Što je dijete jelo i kada, s alergenima s EU popisa od 14 alergena. Ako je bilo reakcije, upiši simptome, jačinu i nakon koliko se javila. Možeš dodati i fotografiju obroka ili deklaracije.</p>
+        <div class="lp-mini" aria-hidden="true">
+          <div class="lp-mini-row"><b>10:00</b><span>Keks iz vrtića</span><span class="badge mod">Reakcija</span></div>
+          <div class="tags"><span class="tag">Gluten</span><span class="tag warn">Mlijeko · poznata alergija</span></div>
+          <span class="muted">Osip, svrbež · nakon 25 min</span>
+        </div>
+      </article>
+      <article class="lp-feature">
+        <div class="lp-art violet" aria-hidden="true">
+          <svg viewBox="0 0 160 120">
+            <ellipse cx="80" cy="110" rx="56" ry="6" fill="#6D28D9" opacity=".12"/>
+            <rect x="46" y="12" width="36" height="16" rx="5" fill="#6D28D9"/>
+            <rect x="52" y="26" width="24" height="9" fill="#C4B5FD"/>
+            <rect x="38" y="33" width="52" height="74" rx="13" fill="#A78BFA"/>
+            <rect x="45" y="52" width="38" height="36" rx="7" fill="#fff"/>
+            <path d="M64 60v20M54 70h20" stroke="#7C3AED" stroke-width="5" stroke-linecap="round"/>
+            <g transform="rotate(-28 122 56)"><rect x="100" y="49" width="44" height="14" rx="4" fill="#fff" stroke="#8B5CF6" stroke-width="3"/><rect x="100" y="52" width="20" height="8" rx="2" fill="#DDD6FE"/><rect x="144" y="53" width="10" height="6" rx="2" fill="#8B5CF6"/><rect x="92" y="53" width="8" height="6" rx="2" fill="#8B5CF6"/><path d="M108 49v5M116 49v7M124 49v5M132 49v7" stroke="#8B5CF6" stroke-width="2"/></g>
+            <g transform="rotate(32 122 96)"><rect x="106" y="90" width="32" height="13" rx="6.5" fill="#F9A8D4"/><path d="M122 90v13" stroke="#fff" stroke-width="2"/><rect x="106" y="90" width="16" height="13" rx="6.5" fill="#EC4899"/></g>
+            <circle cx="140" cy="104" r="6" fill="#FBCFE8"/>
+          </svg>
+        </div>
+        <h3>Terapije</h3>
+        <p>Popis lijekova koje dijete koristi, s uobičajenom dozom i razmakom. Doza se upiše u nekoliko dodira, a aplikacija upozori ako upisani razmak od zadnje doze još nije prošao.</p>
+        <div class="lp-mini" aria-hidden="true">
+          <div class="lp-mini-row"><b>Ibuprofen sirup</b><span class="muted">5 ml</span></div>
+          <span class="muted">Danas u 14:10 · prije 4 h</span>
+          <span class="tag warn" style="align-self:flex-start">Upisani razmak od 6 h još nije prošao</span>
+        </div>
+      </article>
+      <article class="lp-feature">
+        <div class="lp-art warm" aria-hidden="true">
+          <svg viewBox="0 0 160 120">
+            <ellipse cx="80" cy="110" rx="54" ry="6" fill="#C2410C" opacity=".12"/>
+            <g transform="rotate(18 72 62)">
+              <circle cx="72" cy="90" r="16" fill="#fff" stroke="#FDBA74" stroke-width="3"/>
+              <rect x="61" y="12" width="22" height="76" rx="11" fill="#fff" stroke="#FDBA74" stroke-width="3"/>
+              <rect x="63" y="80" width="18" height="12" fill="#fff"/>
+              <rect x="68" y="40" width="8" height="52" rx="4" fill="#EA580C"/>
+              <circle cx="72" cy="90" r="10" fill="#EA580C"/>
+              <path d="M83 26h-6M83 36h-6M83 46h-6M83 56h-6M83 66h-6" stroke="#FDBA74" stroke-width="2.5" stroke-linecap="round"/>
+            </g>
+            <path d="M112 26c7 6-7 11 0 18M126 34c7 6-7 11 0 18" stroke="#FB923C" stroke-width="3" fill="none" stroke-linecap="round"/>
+            <circle cx="118" cy="86" r="16" fill="#fff"/><path d="M110 86l5 5 10-11" stroke="#16A34A" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <h3>Temperatura</h3>
+        <p>Izmjerena vrijednost i način mjerenja. Boja odmah pokaže je li temperatura normalna, povišena ili je vrućica, a graf prikazuje kretanje u zadnja tri dana.</p>
+        <div class="lp-mini" aria-hidden="true">
+          <div class="lp-mini-row"><b>38,4 °C</b><span class="muted">u 21:15 · uho</span><span class="badge mod">Vrućica</span></div>
+          <svg viewBox="0 0 240 64">
+            <defs><linearGradient id="lpSpark" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#EA580C" stop-opacity=".22"/><stop offset="1" stop-color="#EA580C" stop-opacity="0"/></linearGradient></defs>
+            <path d="M0 22H240" stroke="#FDBA74" stroke-dasharray="4 4"/>
+            <path d="M8 46 46 40 84 18 122 26 160 14 198 34 232 44V64H8z" fill="url(#lpSpark)"/>
+            <path d="M8 46 46 40 84 18 122 26 160 14 198 34 232 44" fill="none" stroke="#EA580C" stroke-width="2.5" stroke-linejoin="round"/>
+            <g stroke="#fff" stroke-width="2"><circle cx="8" cy="46" r="4.5" fill="#16A34A"/><circle cx="46" cy="40" r="4.5" fill="#CA8A04"/><circle cx="84" cy="18" r="4.5" fill="#EA580C"/><circle cx="122" cy="26" r="4.5" fill="#EA580C"/><circle cx="160" cy="14" r="4.5" fill="#EA580C"/><circle cx="198" cy="34" r="4.5" fill="#CA8A04"/><circle cx="232" cy="44" r="4.5" fill="#16A34A"/></g>
+          </svg>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section class="lp-section" style="padding-top:24px" aria-labelledby="lpStepsTitle">
+  <div class="lp-wrap">
+    <div class="lp-head">
+      <span class="lp-kicker">Kako počinješ</span>
+      <h2 id="lpStepsTitle">Spremno za minutu, upis u par dodira</h2>
+    </div>
+    <ol class="lp-steps" style="list-style:none;margin:0;padding:0">
+      <li class="lp-step">
+        <div class="num" aria-hidden="true"><span>1</span><svg width="40" height="40"><use href="#gLogo"/></svg></div>
+        <h3>Prijavi se Google računom</h3>
+        <p>Bez nove lozinke i bez obrazaca. Dodaj dijete, a ako imaš više djece, svako ima svoj dnevnik.</p>
+      </li>
+      <li class="lp-step">
+        <div class="num" aria-hidden="true"><span>2</span><svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="#0F766E" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M12 8v6M9 11h6"/><path d="M11 18.5h2"/></svg></div>
+        <h3>Upisuj usput</h3>
+        <p>Na mobitelu je gumb za novi upis uvijek pri ruci. Sve se samo sprema na tvoj račun.</p>
+      </li>
+      <li class="lp-step">
+        <div class="num" aria-hidden="true"><span>3</span><svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="#0F766E" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/></svg></div>
+        <h3>Pokaži liječniku</h3>
+        <p>Pretraži po jelu ili alergenu, izdvoji obroke s reakcijom, pa ispiši pregled ili izvezi CSV.</p>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<section class="lp-section" style="padding-top:24px" aria-labelledby="lpDocTitle">
+  <div class="lp-wrap">
+    <div class="lp-band">
+      <div>
+        <span class="lp-kicker">Za pregled kod liječnika</span>
+        <h2 id="lpDocTitle">Obrasci koje je teško uočiti iz glave</h2>
+        <p>Pregled za svako dijete pokazuje koliko je reakcija bilo u zadnjih tjedan dana i koji se alergeni najčešće javljaju u obrocima nakon kojih je bilo reakcije.</p>
+        <ul>
+          <li><i aria-hidden="true"><svg width="14" height="14" style="color:#5EEAD4"><use href="#lpCheck"/></svg></i><span><b>Poznate alergije</b> su istaknute uz svaki obrok u kojem se pojave.</span></li>
+          <li><i aria-hidden="true"><svg width="14" height="14" style="color:#5EEAD4"><use href="#lpCheck"/></svg></i><span><b>Filtri</b> po vrsti obroka, alergenu, razdoblju i samo za obroke s reakcijom.</span></li>
+          <li><i aria-hidden="true"><svg width="14" height="14" style="color:#5EEAD4"><use href="#lpCheck"/></svg></i><span><b>Ispis i CSV</b> za liječnika ili vlastitu arhivu.</span></li>
+        </ul>
+      </div>
+      <div class="lp-paper" aria-hidden="true">
+        <h3>Pregled — Lea</h3>
+        <div class="stats"><div class="stat"><b>42</b><span>unesena obroka</span></div><div class="stat react"><b>3</b><span>reakcije u zadnjih 7 dana</span></div></div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <span class="muted" style="font-size:13px">Alergeni u obrocima s reakcijom</span>
+          <div class="bar-row"><div class="lbl"><strong>Mlijeko</strong><span class="muted">3× u 3 reakcije</span></div><div class="bar"><i style="width:100%"></i></div></div>
+          <div class="bar-row"><div class="lbl"><strong>Gluten</strong><span class="muted">2× u 3 reakcije</span></div><div class="bar"><i style="width:66%"></i></div></div>
+          <div class="bar-row"><div class="lbl"><strong>Jaja</strong><span class="muted">1× u 3 reakcije</span></div><div class="bar"><i style="width:33%"></i></div></div>
+        </div>
+        <div class="lp-paper-foot"><span>Izvezi CSV</span><span>Ispiši</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="lp-section" style="padding-top:8px" aria-labelledby="lpTrustTitle">
+  <div class="lp-wrap">
+    <div class="lp-head">
+      <span class="lp-kicker">Tvoji podaci</span>
+      <h2 id="lpTrustTitle">Osjetljivi podaci, ozbiljno čuvani</h2>
+    </div>
+    <div class="lp-trust-row">
+      <div class="lp-trust-item">
+        <span class="ic" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0F766E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span>
+        <b>Vidljivo samo tebi</b><span>Svaki zapis pripada tvom računu. Baza ne dopušta da ga vidi itko drugi.</span>
+      </div>
+      <div class="lp-trust-item">
+        <span class="ic" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0F766E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg></span>
+        <b>Poslužitelj u EU</b><span>Podaci se spremaju u Frankfurtu, u Europskoj uniji.</span>
+      </div>
+      <div class="lp-trust-item">
+        <span class="ic" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0F766E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="14" height="11" rx="2"/><rect x="15" y="9" width="7" height="12" rx="2"/><path d="M6 19h6"/></svg></span>
+        <b>Mobitel i računalo</b><span>Upiši na mobitelu, pregledaj na računalu. Na svim uređajima vidiš iste podatke.</span>
+      </div>
+      <div class="lp-trust-item">
+        <span class="ic" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0F766E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14c2.3 0 4 1.5 4.5 4.5"/></svg></span>
+        <b>Više djece</b><span>Svako dijete ima svoje obroke, lijekove, mjerenja i poznate alergije.</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="lp-section" style="padding-top:8px;padding-bottom:0" aria-labelledby="lpFinalTitle">
+  <div class="lp-wrap">
+    <div class="lp-final">
+      <svg class="lp-final-art a1" viewBox="0 0 220 220" aria-hidden="true"><use href="#lpPlate"/></svg>
+      <svg class="lp-final-art a2" viewBox="0 0 220 220" aria-hidden="true"><use href="#lpPlate"/></svg>
+      <h2 id="lpFinalTitle">Upiši današnji ručak, a ostalo dolazi samo</h2>
+      <p>Prijava traje nekoliko sekundi. Za početak ti pokažemo primjere, da odmah vidiš kako dnevnik izgleda.</p>
+      <div class="lp-cta">
+        <button type="button" class="btn google-btn" data-action="sign-in">
+          <svg aria-hidden="true" width="18" height="18"><use href="#gLogo"/></svg>
+          Prijava s Google računom
+        </button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="lp-wrap lp-foot">
+  <div class="brand"><span class="brand-name">Tanjurić</span></div>
+  <span>Tanjurić pomaže voditi evidenciju i ne zamjenjuje liječničku procjenu.</span>
+</footer>
+</div>
 <div class="auth-screen" id="loadingScreen" role="status" aria-live="polite"><span class="muted">Učitavanje…</span></div>
 
 <div id="appShell" hidden>
