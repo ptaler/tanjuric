@@ -171,24 +171,208 @@
     }
   }
 
-  function load() {
-    try {
-      var raw = localStorage.getItem(STORE_KEY);
-      if (raw) {
-        var d = JSON.parse(raw);
-        if (d && Array.isArray(d.children) && Array.isArray(d.entries)) {
-          ['meds', 'doses', 'temps'].forEach(function (k) { if (!Array.isArray(d[k])) d[k] = []; });
-          return d;
-        }
-      }
-    } catch (e) { /* storage unavailable */ }
-    return demoData();
+  function normalize(d) {
+    if (!d || !Array.isArray(d.children) || !Array.isArray(d.entries)) return null;
+    ['meds', 'doses', 'temps'].forEach(function (k) { if (!Array.isArray(d[k])) d[k] = []; });
+    return d;
+  }
+  function readJson(key) {
+    try { var raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : null; }
+    catch (e) { return null; }
+  }
+  function writeJson(key, v) {
+    try { localStorage.setItem(key, JSON.stringify(v)); return true; }
+    catch (e) { return false; }
+  }
+  function emptyData() { return { v: 1, activeChild: null, children: [], entries: [], meds: [], doses: [], temps: [] }; }
+
+  var data = emptyData();
+
+  // ---------- Supabase: prijava i sinkronizacija ----------
+  // Podaci u memoriji ostaju isti kao prije; persist() sprema lokalnu kopiju
+  // i u pozadini šalje razlike na poslužitelj (upsert izmijenjenih, delete uklonjenih).
+  var CFG = window.TANJURIC_CONFIG || {};
+  var sb = window.supabase && CFG.supabaseUrl ? window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseKey) : null;
+  var auth = { user: null };
+  function cacheKey() { return 'tanjuric.cache.' + auth.user.id; }
+
+  function nz(v) { return v === '' || v == null ? null : Number(v); }
+  function zs(v) { return v == null ? '' : Number(v); }
+  var SYNC = [
+    { key: 'children', table: 'children',
+      to: function (c) { return { id: c.id, name: c.name, allergies: c.allergies || [] }; },
+      from: function (r) { return { id: r.id, name: r.name, allergies: r.allergies || [] }; } },
+    { key: 'entries', table: 'meals',
+      to: function (e) {
+        return { id: e.id, child_id: e.childId, date: e.date, time: e.time, type: e.type || '', food: e.food, allergens: e.allergens || [],
+          reaction: !!e.reaction, symptoms: e.symptoms || [], severity: e.severity || '', onset: nz(e.onset), note: e.note || '', photo: e.photo || '' };
+      },
+      from: function (r) {
+        return { id: r.id, childId: r.child_id, date: r.date, time: r.time, type: r.type, food: r.food, allergens: r.allergens || [],
+          reaction: r.reaction, symptoms: r.symptoms || [], severity: r.severity, onset: zs(r.onset), note: r.note, photo: r.photo };
+      } },
+    { key: 'meds', table: 'meds',
+      to: function (m) { return { id: m.id, child_id: m.childId, name: m.name, unit: m.unit, dose: nz(m.dose), interval_h: nz(m.interval), note: m.note || '' }; },
+      from: function (r) { return { id: r.id, childId: r.child_id, name: r.name, unit: r.unit, dose: zs(r.dose), interval: zs(r.interval_h), note: r.note }; } },
+    { key: 'doses', table: 'doses',
+      to: function (d) { return { id: d.id, child_id: d.childId, med_id: d.medId || null, med_name: d.medName, unit: d.unit || '', date: d.date, time: d.time, dose: Number(d.dose), note: d.note || '' }; },
+      from: function (r) { return { id: r.id, childId: r.child_id, medId: r.med_id, medName: r.med_name, unit: r.unit, date: r.date, time: r.time, dose: Number(r.dose), note: r.note }; } },
+    { key: 'temps', table: 'temps',
+      to: function (t) { return { id: t.id, child_id: t.childId, date: t.date, time: t.time, value: Number(t.value), method: t.method || '', note: t.note || '' }; },
+      from: function (r) { return { id: r.id, childId: r.child_id, date: r.date, time: r.time, value: Number(r.value), method: r.method, note: r.note }; } }
+  ];
+  var synced = {};      // table -> { id: json retka zadnje potvrđene verzije }
+  var sync = { busy: false, again: false, timer: null, retry: null, state: 'ok' };
+
+  function setSyncState(s) {
+    sync.state = s;
+    var el = $('#syncStatus'); if (!el) return;
+    el.className = 'sync ' + s;
+    el.textContent = s === 'saving' ? 'Spremanje…' : s === 'error' ? 'Nije spremljeno — pokušavam ponovno' : 'Spremljeno';
   }
 
-  var data = load();
+  function adoptDemoParents() {
+    // Ako je stvaran unos dodan primjeru djeteta, to dijete postaje stvarno.
+    data.children.forEach(function (c) {
+      if (!c.demo) return;
+      var used = ['entries', 'meds', 'doses', 'temps'].some(function (k) {
+        return data[k].some(function (x) { return !x.demo && x.childId === c.id; });
+      });
+      if (used) delete c.demo;
+    });
+  }
+
+  function scheduleSync(delay) {
+    clearTimeout(sync.timer);
+    sync.timer = setTimeout(runSync, delay == null ? 400 : delay);
+  }
+
+  function runSync() {
+    if (!sb || !auth.user) return;
+    if (sync.busy) { sync.again = true; return; }
+    adoptDemoParents();
+    var uidv = auth.user.id, ups = [], dels = [];
+    SYNC.forEach(function (s) {
+      var prev = synced[s.table] || {}, seen = {}, rows = [];
+      data[s.key].forEach(function (x) {
+        if (x.demo) return;
+        var row = s.to(x); row.user_id = uidv;
+        var js = JSON.stringify(row);
+        seen[x.id] = js;
+        if (prev[x.id] !== js) rows.push(row);
+      });
+      var gone = Object.keys(prev).filter(function (id) { return !(id in seen); });
+      if (rows.length) ups.push({ table: s.table, rows: rows });
+      if (gone.length) dels.push({ table: s.table, ids: gone });
+      s._next = seen;
+    });
+    if (!ups.length && !dels.length) { markClean(); return; }
+    sync.busy = true; setSyncState('saving');
+    var p = Promise.resolve();
+    ups.forEach(function (u) {   // roditelji (children) prvi
+      p = p.then(function () { return sb.from(u.table).upsert(u.rows, { onConflict: 'user_id,id' }).then(check); });
+    });
+    dels.slice().reverse().forEach(function (d) {   // djeca prva, roditelji zadnji
+      p = p.then(function () { return sb.from(d.table).delete().eq('user_id', uidv).in('id', d.ids).then(check); });
+    });
+    p.then(function () {
+      SYNC.forEach(function (s) { synced[s.table] = s._next; });
+      sync.busy = false;
+      markClean();
+      if (sync.again) { sync.again = false; runSync(); }
+    }).catch(function (err) {
+      sync.busy = false; sync.again = false;
+      console.error('Sinkronizacija nije uspjela', err);
+      setSyncState('error');
+      clearTimeout(sync.retry);
+      sync.retry = setTimeout(runSync, 8000);
+    });
+  }
+  function check(res) { if (res.error) throw res.error; return res; }
+
+  function markClean() {
+    writeJson(cacheKey(), { dirty: false, data: data });
+    if (!sync.busy) setSyncState('ok');
+  }
+
   function persist() {
-    try { localStorage.setItem(STORE_KEY, JSON.stringify(data)); return true; }
-    catch (e) { return false; }
+    if (!auth.user) return false;
+    savePrefs();
+    writeJson(cacheKey(), { dirty: true, data: data });
+    setSyncState('saving');
+    scheduleSync();
+    return true;
+  }
+
+  function fetchAll() {
+    return Promise.all(SYNC.map(function (s) {
+      return sb.from(s.table).select('*').then(check).then(function (res) { return { s: s, rows: res.data || [] }; });
+    })).then(function (parts) {
+      var d = emptyData();
+      parts.forEach(function (p) {
+        synced[p.s.table] = {};
+        p.rows.forEach(function (r) {
+          var obj = p.s.from(r);
+          d[p.s.key].push(obj);
+          var back = p.s.to(obj); back.user_id = r.user_id;
+          synced[p.s.table][obj.id] = JSON.stringify(back);
+        });
+      });
+      return d;
+    });
+  }
+
+  function legacyData() {
+    if (localStorage.getItem(STORE_KEY + '.imported')) return null;
+    var d = normalize(readJson(STORE_KEY));
+    if (!d) return null;
+    var real = [d.children, d.entries, d.meds, d.doses, d.temps].some(function (l) { return l.some(function (x) { return !x.demo; }); });
+    return real ? d : null;
+  }
+
+  function loadUserData() {
+    showScreen('loading');
+    var cached = readJson(cacheKey());
+    return fetchAll().then(function (server) {
+      var prefs = readJson('tanjuric.prefs.' + auth.user.id) || {};
+      var isEmpty = !server.children.length;
+      if (cached && cached.dirty && normalize(cached.data)) {
+        data = cached.data;               // lokalne promjene koje nisu stigle na poslužitelj
+        scheduleSync(0);
+      } else if (!isEmpty) {
+        data = server;
+      } else {
+        data = prefs.demoCleared ? emptyData() : demoData();
+        ui.legacy = legacyData();
+      }
+      data.activeChild = prefs.activeChild || null;
+      if (!data.children.length) ui.addingChild = true;
+      showScreen('app');
+      renderAll();
+      setSyncState('ok');
+    }).catch(function (err) {
+      console.error(err);
+      if (cached && normalize(cached.data)) {
+        data = cached.data; showScreen('app'); renderAll(); setSyncState('error'); scheduleSync(8000);
+        flash('Nema veze s poslužiteljem — prikazana je zadnja spremljena kopija s ovog uređaja.');
+      } else {
+        showScreen('login');
+        var e = $('#authError'); e.hidden = false; e.textContent = 'Učitavanje podataka nije uspjelo. Provjeri internetsku vezu i pokušaj ponovno.';
+      }
+    });
+  }
+
+  function savePrefs() {
+    if (!auth.user) return;
+    var prefs = readJson('tanjuric.prefs.' + auth.user.id) || {};
+    prefs.activeChild = data.activeChild;
+    writeJson('tanjuric.prefs.' + auth.user.id, prefs);
+  }
+
+  function showScreen(name) {
+    $('#authScreen').hidden = name !== 'login';
+    $('#loadingScreen').hidden = name !== 'loading';
+    $('#appShell').hidden = name !== 'app';
   }
 
   var ui = {
@@ -298,10 +482,18 @@
   function renderDemoBanner() {
     var hasDemo = data.children.some(function (c) { return c.demo; }) ||
       [data.entries, data.meds, data.doses, data.temps].some(function (l) { return l.some(function (e) { return e.demo; }); });
-    $('#demoBanner').innerHTML = hasDemo
-      ? '<div class="demo"><span>Prikazani su <strong>primjeri</strong> da vidiš kako dnevnik izgleda.</span>' +
-        '<button type="button" class="btn-link" data-action="clear-demo">Obriši primjere i kreni ispočetka</button></div>'
+    function realCount(l) { return l.filter(function (x) { return !x.demo; }).length; }
+    var lk = ui.legacy ? realCount(ui.legacy.children) : 0, le = ui.legacy ? realCount(ui.legacy.entries) : 0;
+    var legacy = ui.legacy
+      ? '<div class="demo"><span>Na ovom uređaju postoje podaci upisani prije prijave (' + lk + ' ' + plural(lk, 'dijete', 'djece', 'djece') +
+        ', ' + le + ' ' + plural(le, 'obrok', 'obroka', 'obroka') + '). Prenijeti ih na tvoj račun?</span>' +
+        '<button type="button" class="btn btn-primary" data-action="import-legacy">Prenesi podatke</button>' +
+        '<button type="button" class="btn-link" data-action="skip-legacy">Ne, hvala</button></div>'
       : '';
+    $('#demoBanner').innerHTML = legacy + (hasDemo
+      ? '<div class="demo"><span>Prikazani su <strong>primjeri</strong> da vidiš kako dnevnik izgleda. Primjeri se ne spremaju na tvoj račun.</span>' +
+        '<button type="button" class="btn-link" data-action="clear-demo">Obriši primjere i kreni ispočetka</button></div>'
+      : '');
   }
 
   // ---------- render: list ----------
@@ -1138,9 +1330,29 @@
         });
         data.children.forEach(function (c) { delete c.demo; });
         if (!data.children.length) { data.activeChild = null; ui.addingChild = true; }
+        if (auth.user) {
+          var pr = readJson('tanjuric.prefs.' + auth.user.id) || {};
+          pr.demoCleared = true; writeJson('tanjuric.prefs.' + auth.user.id, pr);
+        }
         closeForm(); persist(); renderAll();
         if (ui.addingChild && $('#newChild')) $('#newChild').focus();
         break;
+      case 'import-legacy': {
+        var L = ui.legacy; if (!L) break;
+        function keep(x) { return !x.demo; }
+        data = { v: 1, activeChild: null, children: L.children.filter(keep), entries: L.entries.filter(keep),
+          meds: L.meds.filter(keep), doses: L.doses.filter(keep), temps: L.temps.filter(keep) };
+        data.activeChild = data.children.length ? data.children[0].id : null;
+        try { localStorage.setItem(STORE_KEY + '.imported', '1'); } catch (e) { /* ignore */ }
+        ui.legacy = null; ui.addingChild = !data.children.length;
+        closeForm(); persist(); renderAll();
+        flash('Podaci s ovog uređaja preneseni su na tvoj račun.'); break;
+      }
+      case 'skip-legacy':
+        try { localStorage.setItem(STORE_KEY + '.imported', '1'); } catch (e) { /* ignore */ }
+        ui.legacy = null; renderDemoBanner(); break;
+      case 'sign-in': signIn(); break;
+      case 'sign-out': signOut(); break;
       case 'export-csv': exportCsv(); break;
       case 'print': window.print(); break;
     }
@@ -1210,6 +1422,49 @@
   // ---------- init ----------
   $('#fType').insertAdjacentHTML('beforeend', TYPES.map(function (t) { return '<option>' + esc(t) + '</option>'; }).join(''));
   $('#fAllergen').insertAdjacentHTML('beforeend', ALLERGENS.map(function (t) { return '<option>' + esc(t) + '</option>'; }).join(''));
-  if (!data.children.length) ui.addingChild = true;
-  renderAll();
+  function signIn() {
+    var e = $('#authError'); e.hidden = true;
+    if (!sb) { e.hidden = false; e.textContent = 'Prijava trenutno nije dostupna (nedostaje konfiguracija).'; return; }
+    $('#signInBtn').disabled = true;
+    sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + location.pathname } }).then(function (res) {
+      if (res.error) { $('#signInBtn').disabled = false; e.hidden = false; e.textContent = 'Prijava nije uspjela: ' + res.error.message; }
+    });
+  }
+
+  function signOut() {
+    var u = auth.user;
+    clearTimeout(sync.timer); clearTimeout(sync.retry);
+    sb.auth.signOut().then(function () {
+      if (u) { try { localStorage.removeItem('tanjuric.cache.' + u.id); } catch (e) { /* ignore */ } }
+    });
+  }
+
+  function onUser(user) {
+    if (auth.ready && (user && user.id) === (auth.user && auth.user.id)) return;
+    auth.ready = true;
+    auth.user = user;
+    data = emptyData(); synced = {};
+    ui.form = null; ui.editingId = null; ui.formKind = null; ui.legacy = null; ui.addingChild = false;
+    if (!user) { $('#signInBtn').disabled = false; showScreen('login'); return; }
+    var name = (user.user_metadata && (user.user_metadata.full_name || user.user_metadata.name)) || user.email || '';
+    $('#userName').textContent = name;
+    $('#userName').title = user.email || '';
+    loadUserData();
+  }
+
+  if (!sb) {
+    showScreen('login');
+    var ce = $('#authError'); ce.hidden = false;
+    ce.textContent = 'Aplikacija nije povezana s poslužiteljem (nedostaje config.js).';
+  } else {
+    showScreen('loading');
+    sb.auth.onAuthStateChange(function (_event, session) {
+      // poziv Supabasea unutar ovog callbacka može zablokirati; odgodi
+      setTimeout(function () { onUser(session ? session.user : null); }, 0);
+    });
+  }
+  window.addEventListener('online', function () { if (sync.state === 'error') scheduleSync(0); });
+  window.addEventListener('beforeunload', function (ev) {
+    if (sync.busy || sync.state !== 'ok') { ev.preventDefault(); ev.returnValue = ''; }
+  });
 })();
