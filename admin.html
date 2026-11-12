@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="hr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tanjurić — administracija</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0F766E">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preload" href="fonts/figtree-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/figtree-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+@font-face{font-family:'Figtree';font-style:normal;font-display:swap;font-weight:400;src:url(fonts/figtree-latin-ext-400-normal.woff2) format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:'Figtree';font-style:normal;font-display:swap;font-weight:400;src:url(fonts/figtree-latin-400-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'Figtree';font-style:normal;font-display:swap;font-weight:600;src:url(fonts/figtree-latin-ext-600-normal.woff2) format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:'Figtree';font-style:normal;font-display:swap;font-weight:600;src:url(fonts/figtree-latin-600-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'Figtree';font-style:normal;font-display:swap;font-weight:700;src:url(fonts/figtree-latin-ext-700-normal.woff2) format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:'Figtree';font-style:normal;font-display:swap;font-weight:700;src:url(fonts/figtree-latin-700-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+
+:root{
+  --accent:#0F766E; --accent-text:#0C5E58; --tint:#E2F0EF;
+  --bg:#F3F5F4; --surface:#FFFFFF; --soft:#F8FAF9;
+  --line:#DDE3E1; --line2:#C9D2CF; --line3:#A9B4B1; --grid:#EAEEEC;
+  --text:#17211F; --text2:#2B3734; --text3:#3B4744; --muted:#52605C;
+  --warn-bg:#FFF7ED; --warn-fg:#9A3412; --warn-bd:#FDBA74;
+  /* boje podataka (provjerene za daltonizam): obroci, terapije, temperature, reakcije */
+  --c-meal:#0D9488; --c-dose:#7C3AED; --c-temp:#D97706; --c-react:#EA580C;
+  --sev-1:#F59E0B; --sev-2:#EA580C; --sev-3:#B91C1C;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font-family:'Figtree',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;font-size:15px;line-height:1.45}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+button:disabled{cursor:not-allowed;opacity:.5}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+h1,h2,h3,p{margin:0}
+[hidden]{display:none !important}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.muted{color:var(--muted)}
+.wrap{max-width:1280px;margin:0 auto;padding-left:20px;padding-right:20px}
+@media (max-width:480px){.wrap{padding-left:16px;padding-right:16px}}
+.num{font-variant-numeric:tabular-nums}
+
+/* Zaglavlje */
+.top-band{position:relative;overflow:hidden;background:linear-gradient(115deg,#0E3F3B 0%,#0F766E 62%,#139087 100%);color:#fff}
+.top-row{position:relative;display:flex;justify-content:space-between;align-items:center;gap:12px 20px;flex-wrap:wrap;padding-top:20px;padding-bottom:20px}
+.brand{display:flex;align-items:center;gap:14px;color:#fff;text-decoration:none}
+.logo{width:48px;height:48px;border-radius:15px;background:#fff;color:var(--accent);display:flex;align-items:center;justify-content:center;flex:0 0 auto;box-shadow:0 10px 24px -10px rgba(0,0,0,.45)}
+.brand-name{font-size:22px;font-weight:700;letter-spacing:-.02em;line-height:1.15;display:block}
+.brand-sub{font-size:14px;color:#B9E3DD;display:block}
+.top-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.top-band :focus-visible{outline-color:#fff}
+.ctl{min-height:44px;padding:8px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.12);color:#fff;font-weight:600;font-size:14px;display:inline-flex;align-items:center;gap:8px;text-decoration:none}
+.ctl:hover{background:rgba(255,255,255,.2)}
+select.ctl{padding-right:34px;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
+select.ctl option{color:var(--text)}
+.ctl.spin svg{animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.account{display:flex;align-items:center;gap:10px;min-height:44px;padding:4px 4px 4px 6px;border-radius:999px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);min-width:0}
+.avatar{width:34px;height:34px;border-radius:50%;background:#FDE4CC;color:#9A3412;font-weight:700;font-size:15px;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+.user-name{font-size:14px;font-weight:600;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.btn-signout{min-height:36px;padding:6px 14px;border:none;border-left:1px solid rgba(255,255,255,.22);border-radius:0 999px 999px 0;background:transparent;color:#fff;font-size:14px;font-weight:600}
+.btn-signout:hover{background:rgba(255,255,255,.14)}
+.sub-row{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px 16px;padding-top:16px;font-size:13px;color:var(--muted)}
+
+/* Gumbi */
+.btn{min-height:44px;padding:8px 16px;border-radius:12px;border:1px solid var(--line2);background:#fff;color:var(--text3);font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none}
+.btn:hover{background:var(--soft)}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent-text)}
+.btn-sm{min-height:36px;padding:6px 12px;font-size:14px;border-radius:10px}
+
+/* Zasloni prijave / greške */
+.center{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px 16px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:28px;max-width:420px;width:100%;display:flex;flex-direction:column;gap:16px;text-align:center;align-items:center}
+.panel h1{font-size:22px}
+.panel .logo{background:var(--accent);color:#fff}
+.panel .btn{width:100%}
+.alert-err{padding:10px 14px;border-radius:10px;background:#FEE2E2;color:#991B1B;font-size:14px;font-weight:600;text-align:left;width:100%}
+
+/* Raspored */
+.dash{display:flex;flex-direction:column;gap:20px;padding-top:20px;padding-bottom:48px}
+.grid{display:grid;gap:20px;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr))}
+.grid3{display:grid;gap:20px;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr))}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px;min-width:0;display:flex;flex-direction:column;gap:14px}
+.card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px 12px;flex-wrap:wrap}
+.card h2{font-size:16px;font-weight:700}
+.card-sub{font-size:13px;color:var(--muted);margin-top:2px}
+.section-title{font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:8px 0 -6px}
+
+/* KPI pločice */
+.kpis{display:grid;gap:12px;grid-template-columns:repeat(2,minmax(0,1fr))}
+@media (min-width:640px){.kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (min-width:1180px){.kpis{grid-template-columns:repeat(6,minmax(0,1fr))}}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.kpi-label{font-size:13px;font-weight:600;color:var(--muted)}
+.kpi-value{font-size:30px;font-weight:700;letter-spacing:-.02em;line-height:1.15;font-variant-numeric:tabular-nums}
+.kpi-note{font-size:13px;color:var(--muted)}
+.kpi-note b{color:var(--text2);font-weight:600}
+.kpi .spark{margin-top:4px}
+
+/* Grafovi */
+.chart{position:relative;width:100%;min-width:0}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart text{font-family:inherit;font-size:12px;fill:var(--muted)}
+.chart .grid-line{stroke:var(--grid);stroke-width:1}
+.chart .base-line{stroke:var(--line2);stroke-width:1}
+.chart .hit rect.hr{fill:transparent}
+.chart .hit .xh{stroke:var(--line3);stroke-width:1;opacity:0}
+.chart .hit .xd{opacity:0}
+.chart .hit:hover .xh,.chart .hit:hover .xd{opacity:1}
+.chart .hit:hover rect.hr{fill:rgba(15,118,110,.05)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13px;color:var(--text3)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:10px;height:10px;border-radius:3px;flex:0 0 auto;display:inline-block}
+.empty{padding:22px 8px;text-align:center;color:var(--muted);font-size:14px;background:var(--soft);border-radius:12px}
+
+/* Vodoravni stupci (HTML) */
+.hbars{display:flex;flex-direction:column;gap:10px}
+.hb{display:grid;grid-template-columns:minmax(84px,34%) 1fr;gap:4px 12px;align-items:center;font-size:14px;border-radius:8px}
+.hb:hover{background:var(--soft)}
+.hb-label{color:var(--text2);line-height:1.25;overflow-wrap:anywhere}
+.hb-bars{display:flex;flex-direction:column;gap:3px;min-width:0}
+.hb-line{display:flex;align-items:center;gap:8px;min-width:0}
+.hb-track{flex:1 1 auto;min-width:0;height:14px;display:flex;align-items:center}
+.hb-fill{height:14px;border-radius:0 4px 4px 0;min-width:2px}
+.hb-line.thin .hb-track,.hb-line.thin .hb-fill{height:9px}
+.hb-val{flex:0 0 auto;min-width:28px;text-align:right;font-size:13px;color:var(--text2);font-variant-numeric:tabular-nums}
+.hb-val small{color:var(--muted);font-size:12px;margin-left:6px;display:inline-block;min-width:34px;text-align:right}
+
+/* Lijevak aktivacije */
+.funnel{display:flex;flex-direction:column;gap:12px}
+.fn-row{display:flex;flex-direction:column;gap:5px}
+.fn-top{display:flex;justify-content:space-between;gap:12px;font-size:14px}
+.fn-top b{font-variant-numeric:tabular-nums}
+.fn-track{height:12px;background:#EEF2F1;border-radius:4px;overflow:hidden}
+.fn-fill{height:100%;background:var(--c-meal);border-radius:0 4px 4px 0}
+.fn-step{font-size:12px;color:var(--muted)}
+
+/* Segmentirana traka */
+.seg-bar{display:flex;gap:2px;height:16px;border-radius:4px;overflow:hidden}
+.seg-bar > span{height:100%}
+
+/* Tablica korisnika */
+.tools{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.search{flex:1 1 280px;min-height:44px;padding:8px 12px 8px 38px;border:1px solid var(--line2);border-radius:12px;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%2352605C' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") no-repeat 12px center;min-width:0}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{min-height:36px;padding:6px 12px;border-radius:999px;border:1px solid var(--line2);background:#fff;color:var(--text2);font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px}
+.chip[aria-pressed="true"]{background:var(--tint);border-color:var(--accent);color:var(--accent-text)}
+.chip .cnt{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;-webkit-overflow-scrolling:touch}
+table.users{border-collapse:collapse;width:100%;min-width:980px;font-size:14px}
+table.users th,table.users td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--line);vertical-align:middle;white-space:nowrap}
+table.users tbody tr:last-child td{border-bottom:none}
+table.users tbody tr:hover{background:var(--soft)}
+table.users th{background:var(--soft);font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;position:sticky;top:0}
+table.users th button{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:4px;border-radius:4px}
+table.users th button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+table.users th[aria-sort] button{color:var(--text)}
+table.users td.n,table.users th.n{text-align:right;font-variant-numeric:tabular-nums}
+table.users th.n button{flex-direction:row-reverse}
+td.n .zero{color:var(--line3)}
+.u-cell{display:flex;align-items:center;gap:10px;min-width:220px}
+.u-av{width:32px;height:32px;border-radius:50%;background:#E6EBE9;color:var(--text2);font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+.u-name{font-weight:600;color:var(--text);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.u-mail{font-size:13px;color:var(--muted)}
+.badge{font-size:11px;font-weight:700;padding:1px 7px;border-radius:999px;border:1px solid var(--line2);color:var(--text3);background:#fff;text-transform:uppercase;letter-spacing:.03em}
+.badge.admin{background:var(--tint);border-color:var(--accent);color:var(--accent-text)}
+.badge.new{background:#EFF6FF;border-color:#93C5FD;color:#1E40AF}
+.state{display:inline-flex;align-items:center;gap:6px;font-size:13px}
+.state::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--line3)}
+.state.on::before{background:#16A34A}
+.state.mid::before{background:#F59E0B}
+.when{font-size:13px}
+.when small{display:block;color:var(--muted);font-size:12px}
+.table-foot{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px 16px;font-size:13px;color:var(--muted)}
+.table-foot .left{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+
+/* Pregled podataka */
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:0 24px}
+.fact{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}
+.fact b{font-variant-numeric:tabular-nums;font-size:15px;white-space:nowrap}
+.fact span small{display:block;color:var(--muted);font-size:12px}
+.note-warn{padding:10px 14px;border-radius:10px;background:var(--warn-bg);border:1px solid var(--warn-bd);color:var(--warn-fg);font-size:14px}
+
+details.tbl summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--accent-text);min-height:32px;display:inline-flex;align-items:center}
+details.tbl table{border-collapse:collapse;font-size:13px;margin-top:6px;width:100%}
+details.tbl th,details.tbl td{padding:4px 8px;border-bottom:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums}
+details.tbl th:first-child,details.tbl td:first-child{text-align:left}
+details.tbl .scroll{max-height:260px;overflow:auto}
+
+/* Tooltip */
+.tip{position:fixed;z-index:50;pointer-events:none;background:#17211F;color:#fff;font-size:13px;line-height:1.4;padding:8px 10px;border-radius:10px;box-shadow:0 12px 28px -12px rgba(0,0,0,.5);max-width:260px}
+.tip b{font-weight:700}
+.tip .row{display:flex;align-items:center;gap:6px}
+.tip .sw{width:8px;height:8px}
+
+.foot{border-top:1px solid var(--line);padding-top:16px;padding-bottom:40px;font-size:13px;color:var(--muted);display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 16px}
+.foot a{color:var(--accent-text);font-weight:600}
+
+@media (max-width:640px){
+  .top-actions{width:100%}
+  .account{margin-left:auto}
+  .user-name{max-width:120px}
+  .kpi-value{font-size:26px}
+}
+</style>
+</head>
+<body>
+
+<div class="center" id="loadingScreen" role="status" aria-live="polite"><span class="muted">Učitavanje…</span></div>
+
+<div class="center" id="loginScreen" hidden>
+  <div class="panel">
+    <div class="logo" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="7"/><circle cx="12" cy="13" r="3.5"/><path d="M4 3v5"/><path d="M20 3v5"/></svg></div>
+    <h1>Administracija</h1>
+    <p class="muted">Prijavi se Google računom koji ima administratorska prava.</p>
+    <div class="alert-err" id="loginError" hidden></div>
+    <button type="button" class="btn btn-primary" data-action="sign-in">Prijava s Googleom</button>
+    <a class="btn" href="./">Natrag u aplikaciju</a>
+  </div>
+</div>
+
+<div class="center" id="deniedScreen" hidden>
+  <div class="panel">
+    <h1>Nema pristupa</h1>
+    <p class="muted">Račun <b id="deniedEmail"></b> nema administratorska prava.</p>
+    <a class="btn btn-primary" href="./">Natrag u aplikaciju</a>
+    <button type="button" class="btn" data-action="sign-out">Odjava</button>
+  </div>
+</div>
+
+<div id="shell" hidden>
+  <header class="top-band">
+    <div class="wrap top-row">
+      <a class="brand" href="./">
+        <span class="logo" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="7"/><circle cx="12" cy="13" r="3.5"/><path d="M4 3v5"/><path d="M20 3v5"/></svg></span>
+        <span><span class="brand-name">Tanjurić · administracija</span><span class="brand-sub">Pregled korisnika i korištenja aplikacije</span></span>
+      </a>
+      <div class="top-actions">
+        <label for="period" class="sr-only">Razdoblje</label>
+        <select id="period" class="ctl">
+          <option value="7">Zadnjih 7 dana</option>
+          <option value="30" selected>Zadnjih 30 dana</option>
+          <option value="90">Zadnjih 90 dana</option>
+          <option value="365">Zadnjih 12 mjeseci</option>
+        </select>
+        <button type="button" class="ctl" data-action="refresh" id="refreshBtn">
+          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
+          Osvježi
+        </button>
+        <div class="account">
+          <span class="avatar" id="userAvatar" aria-hidden="true"></span>
+          <span class="user-name" id="userName"></span>
+          <button type="button" class="btn-signout" data-action="sign-out">Odjava</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="sub-row">
+      <span id="updated" aria-live="polite"></span>
+      <span>Vrijeme i dani prikazani su po hrvatskom vremenu.</span>
+    </div>
+    <div class="alert-err" id="loadError" hidden style="margin-top:16px"></div>
+    <div class="dash" id="dash"></div>
+  </main>
+
+  <footer class="wrap foot">
+    <span><a href="./">Natrag u aplikaciju</a></span>
+    <span>Admin vidi samo zbirne brojke i podatke o računima, ne i sadržaj dnevnika (imena djece, jela, bilješke, fotografije).</span>
+  </footer>
+</div>
+
+<div class="tip" id="tip" role="tooltip" hidden></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.115.0/dist/umd/supabase.js" defer></script>
+<script src="config.js" defer></script>
+<script src="admin.js" defer></script>
+</body>
+</html>
