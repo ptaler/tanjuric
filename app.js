@@ -36,6 +36,7 @@
     edit: '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>',
     trash: '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="M6 7l1 13h10l1-13"/></svg>',
     clock: '<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+    gallery: '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg>',
     camera: '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>',
     check: '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg>',
     search: '<svg aria-hidden="true" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#A9B4B1" stroke-width="1.6" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>'
@@ -1100,7 +1101,13 @@
     if (f.photoBusy) return '<span class="photo-busy" role="status">Spremam fotografiju…</span>';
     return (f.photo ? '<button type="button" class="photo-btn" data-action="photo-open" data-path="' + esc(f.photo) + '" data-caption="' + esc(f.food || 'Odabrana fotografija') + '" aria-label="Prikaži fotografiju u punoj veličini">' +
         photoImg(thumbPath(f.photo), 'Odabrana fotografija') + '</button>' : '') +
-      '<label class="file-btn">' + ICON.camera + (f.photo ? 'Zamijeni fotografiju' : 'Dodaj fotografiju') +
+      // Na mobitelu: „Fotografiraj” izravno otvara stražnju kameru, „Iz galerije” postojeće slike.
+      // Na računalu (miš) gumb za kameru se skriva, a drugi gumb glasi „Dodaj fotografiju”.
+      '<label class="file-btn cam-btn">' + ICON.camera + (f.photo ? 'Fotografiraj ponovno' : 'Fotografiraj') +
+      '<input type="file" accept="image/*" capture="environment" id="fCameraInput"></label>' +
+      '<label class="file-btn">' + ICON.gallery +
+      '<span class="lbl-touch">' + (f.photo ? 'Zamijeni iz galerije' : 'Iz galerije') + '</span>' +
+      '<span class="lbl-mouse">' + (f.photo ? 'Zamijeni fotografiju' : 'Dodaj fotografiju') + '</span>' +
       '<input type="file" accept="image/*" id="fPhotoInput"></label>' +
       (f.photo ? '<button type="button" class="btn" data-action="f-photo-remove">Ukloni</button>' : '') +
       (f.photoErr ? '<div class="alert-err" role="alert" style="flex:1 1 100%">' + esc(f.photoErr) + '</div>' : '');
@@ -2087,7 +2094,7 @@
     if (t.id === 'fType') { ui.fType = t.value; renderList(); }
     else if (t.id === 'fAllergen') { ui.fAllergen = t.value; renderList(); }
     else if (t.id === 'fRange') { ui.fRange = t.value; renderList(); }
-    else if (t.id === 'fPhotoInput') { readPhoto(t.files && t.files[0]); }
+    else if (t.id === 'fPhotoInput' || t.id === 'fCameraInput') { readPhoto(t.files && t.files[0]); }
   });
 
   document.addEventListener('keydown', function (ev) {
