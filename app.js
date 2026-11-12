@@ -402,7 +402,7 @@
     addingChild: false, editingAllergies: false,
     tab: 'meals', formKind: null,
     medForm: null, medEditingId: null, confirmMedDeleteId: null,
-    confirmChildDeleteId: null, picking: false, occEdit: null
+    confirmChildDeleteId: null, picking: false, occEdit: null, exp: null
   };
   try {
     var savedTab = localStorage.getItem(TAB_KEY);
@@ -992,6 +992,8 @@
     var child = activeChild();
     var stats = $('#statsCard'), ac = $('#allergyCard');
     $('#dataCard').hidden = !child;
+    if (ui.exp && child && ui.exp.medId && !medById(ui.exp.medId)) ui.exp.medId = '';
+    renderExport(child);
     renderChildDelete(child);
     renderMedCard(child);
     if (!child) { stats.hidden = true; ac.hidden = true; return; }
@@ -1433,52 +1435,189 @@
     return i < 0;
   }
 
-  // ---------- export ----------
-  function exportCsv() {
-    var child = activeChild(); if (!child) return;
+  // ---------- izvoz (CSV) i ispis ----------
+  // Oba koriste iste filtre iz panela u kartici „Podaci”: razdoblje je uvijek zadano.
+  var WHAT_LABEL = { all: 'Sve', meals: 'Obroci', doses: 'Terapije', temps: 'Temperatura' };
+  var EX_ICON = {
+    csv: '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></svg>',
+    print: '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/></svg>'
+  };
+  var PRESETS = [['7', '7 dana'], ['30', '30 dana'], ['90', '3 mjeseca'], ['all', 'Sve']];
+  function csvDate(iso) { var d = parseIso(iso); return pad(d.getDate()) + '.' + pad(d.getMonth() + 1) + '.' + d.getFullYear() + '.'; }
+  function hrDate(iso) { var d = parseIso(iso); return d.getDate() + '. ' + (d.getMonth() + 1) + '. ' + d.getFullYear() + '.'; }
+
+  function firstDate(child) {
+    var ds = [childEntries(child), ofChild(data.doses, child), ofChild(data.temps, child)]
+      .reduce(function (a, l) { return a.concat(l.map(function (x) { return x.date; })); }, []).sort();
+    return ds[0] || '';
+  }
+  function setPreset(x, p, child) {
+    x.preset = p; x.to = isoOffset(0);
+    x.from = p === 'all' ? (firstDate(child) || x.to) : isoOffset(-(Number(p) - 1));
+    if (x.from > x.to) x.from = x.to;
+  }
+  function newExport(kind, child) {
+    var x = { kind: kind, what: ui.tab, preset: '30', from: '', to: '', reactOnly: false, allergen: '', medId: '', feverOnly: false,
+      incMeals: true, incDoses: true, incTemps: true };
+    setPreset(x, '30', child);
+    return x;
+  }
+
+  // Redovi za CSV i ispis prema filtrima. Vraća i opis filtara za zaglavlje ispisa.
+  function exportData(child, x) {
+    function inRange(d) { return d >= x.from && d <= x.to; }
     function asc(a, b) { return (a.date + a.time).localeCompare(b.date + b.time); }
-    function hrDate(iso) { var d = parseIso(iso); return pad(d.getDate()) + '.' + pad(d.getMonth() + 1) + '.' + d.getFullYear() + '.'; }
-    function cell(v) { v = String(v == null ? '' : v); return /[";\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
-    var head, rows, kindName;
-    if (ui.tab === 'all') {
-      kindName = 'sve';
-      head = ['Datum', 'Vrijeme', 'Vrsta', 'Opis', 'Detalji', 'Bilješka'];
-      rows = timelineItems(child).reverse().map(function (x) {
-        var it = x.item;
-        if (x.kind === 'meal') return [hrDate(x.date), x.time, 'Obrok · ' + it.type, it.food,
-          [it.allergens.length ? 'Alergeni: ' + it.allergens.join(', ') : '', it.reaction ? 'Reakcija: ' + it.severity : 'Bez reakcije'].filter(Boolean).join('; '), it.note];
-        if (x.kind === 'react') return [hrDate(x.date), x.time, 'Reakcija', it.symptoms.join(', ') || 'Reakcija',
-          (it.severity ? it.severity + '; ' : '') + it.onset + ' min nakon obroka: ' + it.food, ''];
-        if (x.kind === 'dose') return [hrDate(x.date), x.time, 'Terapija', doseMedName(it), doseText(it.dose, it.unit), it.note];
-        return [hrDate(x.date), x.time, 'Temperatura', fmtNum(it.value.toFixed(1)) + ' °C', it.method, it.note];
+    function mealOk(e) { return (!x.reactOnly || e.reaction) && (x.what !== 'meals' || !x.allergen || e.allergens.indexOf(x.allergen) >= 0); }
+    var out = { filters: [], head: [], rows: [], kindName: '', summary: '' };
+    var w = x.what;
+    if (w === 'meals' || w === 'all') {
+      if (x.reactOnly) out.filters.push('samo obroci s reakcijom');
+      if (w === 'meals' && x.allergen) out.filters.push('alergen: ' + x.allergen);
+    }
+    if (w === 'doses' && x.medId) out.filters.push('lijek: ' + ((medById(x.medId) || {}).name || ''));
+    if (w === 'temps' && x.feverOnly) out.filters.push('samo od 37,5 °C');
+    if (w === 'all') {
+      var skip = [x.incMeals ? '' : 'obroke', x.incDoses ? '' : 'terapije', x.incTemps ? '' : 'temperaturu'].filter(Boolean);
+      if (skip.length) out.filters.push('bez: ' + skip.join(', '));
+      out.kindName = 'sve';
+      out.head = ['Datum', 'Vrijeme', 'Vrsta', 'Opis', 'Detalji', 'Bilješka'];
+      var items = timelineItems(child).filter(function (it) {
+        if (!inRange(it.date)) return false;
+        if (it.kind === 'meal' || it.kind === 'react') return x.incMeals && mealOk(it.item);
+        if (it.kind === 'dose') return x.incDoses;
+        return x.incTemps;
+      }).reverse();
+      out.rows = items.map(function (it) {
+        var e = it.item;
+        if (it.kind === 'meal') return [csvDate(it.date), it.time, 'Obrok · ' + e.type, e.food,
+          [e.allergens.length ? 'Alergeni: ' + e.allergens.join(', ') : '', e.reaction ? 'Reakcija: ' + e.severity : 'Bez reakcije'].filter(Boolean).join('; '), e.note];
+        if (it.kind === 'react') return [csvDate(it.date), it.time, 'Reakcija', e.symptoms.join(', ') || 'Reakcija',
+          (e.severity ? e.severity + '; ' : '') + e.onset + ' min nakon obroka: ' + e.food, ''];
+        if (it.kind === 'dose') return [csvDate(it.date), it.time, 'Terapija', doseMedName(e), doseText(e.dose, e.unit), e.note];
+        return [csvDate(it.date), it.time, 'Temperatura', fmtNum(e.value.toFixed(1)) + ' °C', e.method, e.note];
       });
-    } else if (ui.tab === 'doses') {
-      kindName = 'terapije';
-      head = ['Datum', 'Vrijeme', 'Lijek', 'Doza', 'Jedinica', 'Bilješka'];
-      rows = ofChild(data.doses, child).sort(asc).map(function (d) {
-        return [hrDate(d.date), d.time, doseMedName(d), fmtNum(d.dose), unitLabel(d.unit, d.dose), d.note];
-      });
-    } else if (ui.tab === 'temps') {
-      kindName = 'temperatura';
-      head = ['Datum', 'Vrijeme', 'Temperatura (°C)', 'Način mjerenja', 'Bilješka'];
-      rows = ofChild(data.temps, child).sort(asc).map(function (t) {
-        return [hrDate(t.date), t.time, fmtNum(t.value.toFixed(1)), t.method, t.note];
-      });
+      var nm = items.filter(function (i) { return i.kind === 'meal'; }).length;
+      var nr = items.filter(function (i) { return i.kind === 'meal' && i.item.reaction; }).length;
+      var nd = items.filter(function (i) { return i.kind === 'dose'; }).length;
+      var nt = items.filter(function (i) { return i.kind === 'temp'; }).length;
+      out.summary = [x.incMeals ? nm + ' ' + plural(nm, 'obrok', 'obroka', 'obroka') + (nr ? ' (' + nr + ' s reakcijom)' : '') : '',
+        x.incDoses ? nd + ' ' + plural(nd, 'terapija', 'terapije', 'terapija') : '',
+        x.incTemps ? nt + ' ' + plural(nt, 'mjerenje', 'mjerenja', 'mjerenja') : ''].filter(Boolean).join(' · ');
+      out.count = items.filter(function (i) { return i.kind !== 'react'; }).length;
+    } else if (w === 'doses') {
+      out.kindName = 'terapije';
+      out.head = ['Datum', 'Vrijeme', 'Lijek', 'Doza', 'Jedinica', 'Po planu', 'Bilješka'];
+      var ds = ofChild(data.doses, child).filter(function (d) { return inRange(d.date) && (!x.medId || d.medId === x.medId); }).sort(asc);
+      out.rows = ds.map(function (d) { return [csvDate(d.date), d.time, doseMedName(d), fmtNum(d.dose), unitLabel(d.unit, d.dose), d.slot || '', d.note]; });
+      out.count = ds.length;
+      out.summary = ds.length + ' ' + plural(ds.length, 'terapija', 'terapije', 'terapija');
+    } else if (w === 'temps') {
+      out.kindName = 'temperatura';
+      out.head = ['Datum', 'Vrijeme', 'Temperatura (°C)', 'Ocjena', 'Način mjerenja', 'Bilješka'];
+      var ts = ofChild(data.temps, child).filter(function (t) { return inRange(t.date) && (!x.feverOnly || t.value >= 37.5); }).sort(asc);
+      out.rows = ts.map(function (t) { return [csvDate(t.date), t.time, fmtNum(t.value.toFixed(1)), tempLevel(t.value).label, t.method, t.note]; });
+      out.count = ts.length;
+      var mx = ts.length ? Math.max.apply(null, ts.map(function (t) { return t.value; })) : null;
+      out.summary = ts.length + ' ' + plural(ts.length, 'mjerenje', 'mjerenja', 'mjerenja') + (mx != null ? ' · najviša ' + fmtNum(mx.toFixed(1)) + ' °C' : '');
     } else {
-      kindName = 'obroci';
-      head = ['Datum', 'Vrijeme', 'Obrok', 'Jelo', 'Alergeni', 'Reakcija', 'Jačina', 'Simptomi', 'Nakon (min)', 'Bilješka'];
-      rows = childEntries(child).slice().sort(asc).map(function (e) {
-        return [hrDate(e.date), e.time, e.type, e.food, e.allergens.join(', '),
+      out.kindName = x.reactOnly ? 'obroci-s-reakcijom' : 'obroci';
+      out.head = ['Datum', 'Vrijeme', 'Obrok', 'Jelo', 'Alergeni', 'Reakcija', 'Jačina', 'Simptomi', 'Nakon (min)', 'Bilješka'];
+      var es = childEntries(child).filter(function (e) { return inRange(e.date) && mealOk(e); }).sort(asc);
+      out.rows = es.map(function (e) {
+        return [csvDate(e.date), e.time, e.type, e.food, e.allergens.join(', '),
           e.reaction ? 'Da' : 'Ne', e.reaction ? e.severity : '', e.symptoms.join(', '), e.reaction ? e.onset : '', e.note];
       });
+      out.count = es.length;
+      var rc = es.filter(function (e) { return e.reaction; }).length;
+      out.summary = es.length + ' ' + plural(es.length, 'obrok', 'obroka', 'obroka') + ' · ' + rc + ' ' + plural(rc, 'reakcija', 'reakcije', 'reakcija');
     }
-    var lines = [head.join(';')].concat(rows.map(function (r) { return r.map(cell).join(';'); }));
+    return out;
+  }
+
+  function renderExport(child) {
+    var box = $('#exportBox');
+    if (!child) { box.innerHTML = ''; return; }
+    var x = ui.exp;
+    if (!x) {
+      box.innerHTML = '<div class="aside-actions">' +
+        '<button type="button" class="btn" data-action="export-open" data-val="csv" data-fk="exp-open-csv">' + EX_ICON.csv + 'Izvezi CSV</button>' +
+        '<button type="button" class="btn" data-action="export-open" data-val="print" data-fk="exp-open-print">' + EX_ICON.print + 'Ispiši</button></div>';
+      return;
+    }
+    var bad = !x.from || !x.to || x.from > x.to;
+    var res = bad ? null : exportData(child, x);
+    function opt(v, label, cur) { return '<option value="' + esc(v) + '"' + (v === cur ? ' selected' : '') + '>' + esc(label) + '</option>'; }
+    function check(field, label, on) {
+      return '<label class="check"><input type="checkbox" data-xfield="' + field + '"' + (on ? ' checked' : '') + '>' + esc(label) + '</label>';
+    }
+    var extra = '';
+    if (x.what === 'meals') {
+      extra = check('reactOnly', 'Samo obroci s reakcijom', x.reactOnly) +
+        '<div class="field"><label for="xAllergen">Alergen</label><select id="xAllergen" class="input" data-xfield="allergen">' +
+        opt('', 'Svi obroci', x.allergen) + ALLERGENS.map(function (a) { return opt(a, a, x.allergen); }).join('') + '</select></div>';
+    } else if (x.what === 'doses') {
+      extra = '<div class="field"><label for="xMed">Lijek</label><select id="xMed" class="input" data-xfield="medId">' +
+        opt('', 'Svi lijekovi', x.medId) + childMeds(child).map(function (m) { return opt(m.id, m.name, x.medId); }).join('') + '</select></div>';
+    } else if (x.what === 'temps') {
+      extra = check('feverOnly', 'Samo povišena temperatura (od 37,5 °C)', x.feverOnly);
+    } else {
+      extra = '<div class="check-row">' + check('incMeals', 'Obroci', x.incMeals) + check('incDoses', 'Terapije', x.incDoses) + check('incTemps', 'Temperatura', x.incTemps) + '</div>' +
+        (x.incMeals ? check('reactOnly', 'Od obroka samo oni s reakcijom', x.reactOnly) : '');
+    }
+    var count = res ? res.count : 0;
+    box.innerHTML = '<div class="export-panel" role="group" aria-labelledby="expTitle">' +
+      '<strong id="expTitle">' + (x.kind === 'print' ? 'Ispis' : 'Izvoz u CSV') + ' — ' + esc(child.name) + '</strong>' +
+      '<div class="field"><label for="xWhat">Sadržaj</label><select id="xWhat" class="input" data-xfield="what">' +
+        ['all', 'meals', 'doses', 'temps'].map(function (k) { return opt(k, WHAT_LABEL[k], x.what); }).join('') + '</select></div>' +
+      '<fieldset><legend>Razdoblje</legend><div class="chips">' + PRESETS.map(function (p) {
+        return '<button type="button" class="chip sq" data-action="export-preset" data-val="' + p[0] + '" data-fk="exp-preset-' + p[0] + '" aria-pressed="' + (x.preset === p[0]) + '">' + p[1] + '</button>';
+      }).join('') + '</div>' +
+      '<div class="grid2" style="margin-top:10px"><div class="field"><label for="xFrom">Od</label><input id="xFrom" class="input" type="date" data-xfield="from" value="' + esc(x.from) + '" max="' + esc(isoOffset(0)) + '"></div>' +
+      '<div class="field"><label for="xTo">Do</label><input id="xTo" class="input" type="date" data-xfield="to" value="' + esc(x.to) + '" max="' + esc(isoOffset(0)) + '"></div></div></fieldset>' +
+      extra +
+      (bad ? '<div class="alert-err" role="alert">Odaberi razdoblje: datum „Od” mora biti prije datuma „Do”.</div>'
+        : '<p class="export-count" role="status">' + (count ? esc(res.summary) : 'Za odabrane filtre nema zapisa.') + '</p>') +
+      '<div class="aside-actions"><button type="button" class="btn" data-action="export-cancel">Odustani</button>' +
+      '<button type="button" class="btn' + (x.kind === 'csv' ? ' btn-primary' : '') + '" data-action="export-run" data-val="csv"' + (count ? '' : ' disabled') + '>' + EX_ICON.csv + 'Preuzmi CSV</button>' +
+      '<button type="button" class="btn' + (x.kind === 'print' ? ' btn-primary' : '') + '" data-action="export-run" data-val="print"' + (count ? '' : ' disabled') + '>' + EX_ICON.print + 'Ispiši</button></div></div>';
+  }
+
+  function runExport(kind) {
+    var child = activeChild(), x = ui.exp; if (!child || !x || !x.from || !x.to || x.from > x.to) return;
+    var res = exportData(child, x);
+    if (!res.count) return;
+    if (kind === 'csv') downloadCsv(child, x, res); else printReport(child, x, res);
+  }
+
+  function downloadCsv(child, x, res) {
+    function cell(v) { v = String(v == null ? '' : v); return /[";\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+    var lines = [res.head.join(';')].concat(res.rows.map(function (r) { return r.map(cell).join(';'); }));
     var blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
     var a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'tanjuric-' + kindName + '-' + norm(child.name).replace(/[^a-z0-9]+/g, '-') + '-' + toIso(new Date()) + '.csv';
+    a.download = 'tanjuric-' + res.kindName + '-' + norm(child.name).replace(/[^a-z0-9]+/g, '-') + '-' + x.from + '_' + x.to + '.csv';
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+    flash('CSV je preuzet: ' + res.summary + '.');
+  }
+
+  function printReport(child, x, res) {
+    var known = knownOf(child);
+    var pv = $('#printView');
+    pv.innerHTML = '<header class="pv-head"><div><h1>' + esc(WHAT_LABEL[x.what]) + ' — ' + esc(child.name) + '</h1>' +
+      '<p>Razdoblje: <strong>' + esc(hrDate(x.from)) + ' – ' + esc(hrDate(x.to)) + '</strong>' +
+      (res.filters.length ? ' · ' + esc(res.filters.join(' · ')) : '') + '</p>' +
+      ((x.what === 'meals' || x.what === 'all') ? '<p>Poznate alergije: <strong>' + esc(known.length ? known.join(', ') : 'nisu upisane') + '</strong></p>' : '') +
+      '<p>' + esc(res.summary) + '</p></div>' +
+      '<div class="pv-brand">Tanjurić<span>Ispisano ' + esc(hrDate(isoOffset(0))) + '</span></div></header>' +
+      '<table class="pv-table"><thead><tr>' + res.head.map(function (h) { return '<th>' + esc(h) + '</th>'; }).join('') + '</tr></thead><tbody>' +
+      res.rows.map(function (r) { return '<tr>' + r.map(function (c) { return '<td>' + esc(c) + '</td>'; }).join('') + '</tr>'; }).join('') +
+      '</tbody></table><p class="pv-foot">Tanjurić pomaže voditi evidenciju i ne zamjenjuje liječničku procjenu.</p>';
+    document.body.classList.add('print-report');
+    function done() { document.body.classList.remove('print-report'); window.removeEventListener('afterprint', done); }
+    window.addEventListener('afterprint', done);
+    window.print();
+    setTimeout(function () { if (!window.matchMedia('print').matches) done(); }, 1000);
   }
 
   // ---------- events ----------
@@ -1591,7 +1730,7 @@
       case 'close-form': closeForm(); break;
       case 'save': saveForm(); break;
       case 'pick-child':
-        data.activeChild = id; ui.confirmDeleteId = null; ui.occEdit = null; ui.editingAllergies = false;
+        data.activeChild = id; ui.confirmDeleteId = null; ui.occEdit = null; ui.exp = null; ui.editingAllergies = false;
         ui.medForm = null; ui.medEditingId = null; ui.confirmMedDeleteId = null;
         closeForm(); persist(); renderAll(); break;
       case 'add-child-start':
@@ -1615,7 +1754,7 @@
         data.doses = data.doses.filter(other); data.temps = data.temps.filter(other); data.slots = data.slots.filter(other);
         data.children = data.children.filter(function (c) { return c.id !== id; });
         data.activeChild = data.children.length ? data.children[0].id : null;
-        ui.confirmChildDeleteId = null; ui.confirmDeleteId = null; ui.editingAllergies = false;
+        ui.confirmChildDeleteId = null; ui.confirmDeleteId = null; ui.editingAllergies = false; ui.exp = null;
         ui.medForm = null; ui.medEditingId = null; ui.confirmMedDeleteId = null;
         if (!data.children.length) ui.addingChild = true;
         closeForm(); persist(); renderAll();
@@ -1712,8 +1851,22 @@
         ui.legacy = null; renderDemoBanner(); break;
       case 'sign-in': signIn(); break;
       case 'sign-out': signOut(); break;
-      case 'export-csv': exportCsv(); break;
-      case 'print': window.print(); break;
+      case 'export-open':
+        ui.exp = newExport(v, activeChild()); renderAside();
+        if ($('#xWhat')) $('#xWhat').focus();
+        break;
+      case 'export-cancel': {
+        var wasKind = ui.exp ? ui.exp.kind : 'csv';
+        ui.exp = null; renderAside();
+        var eo = document.querySelector('[data-fk="exp-open-' + wasKind + '"]'); if (eo) eo.focus();
+        break;
+      }
+      case 'export-preset':
+        if (!ui.exp) break;
+        setPreset(ui.exp, v, activeChild()); renderAside();
+        var ep = document.querySelector('[data-fk="exp-preset-' + v + '"]'); if (ep) ep.focus();
+        break;
+      case 'export-run': runExport(v); break;
     }
   });
 
@@ -1773,6 +1926,18 @@
 
   document.addEventListener('change', function (ev) {
     var t = ev.target;
+    var xf = t.getAttribute && t.getAttribute('data-xfield');
+    if (xf && ui.exp) {
+      ui.exp[xf] = t.type === 'checkbox' ? t.checked : t.value;
+      if (xf === 'from' || xf === 'to') ui.exp.preset = '';
+      if (xf === 'what') { ui.exp.allergen = ''; ui.exp.medId = ''; }
+      var keepId = t.id, keepFk = t.getAttribute('data-xfield');
+      renderAside();
+      var back = keepId ? document.getElementById(keepId) : null;
+      if (!back) back = document.querySelector('[data-xfield="' + keepFk + '"]');
+      if (back) back.focus();
+      return;
+    }
     if (t.id === 'fType') { ui.fType = t.value; renderList(); }
     else if (t.id === 'fAllergen') { ui.fAllergen = t.value; renderList(); }
     else if (t.id === 'fRange') { ui.fRange = t.value; renderList(); }
