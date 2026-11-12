@@ -163,7 +163,19 @@ textarea.input{resize:vertical;padding:10px 12px}
 .entry h3{font-size:17px;font-weight:600;line-height:1.35;flex:1 1 180px;overflow-wrap:anywhere}
 .entry .note{font-size:14px;color:var(--text3);white-space:pre-line;overflow-wrap:anywhere}
 .entry .symptoms{font-size:14px;color:var(--text3)}
-.entry .photo{width:96px;height:96px;object-fit:cover;border-radius:12px;border:1px solid var(--line);flex:0 0 auto}
+.entry .photo{display:block;width:96px;height:96px;object-fit:cover;border-radius:12px;border:1px solid var(--line);flex:0 0 auto}
+.photo-btn{padding:0;border:none;background:none;border-radius:12px;cursor:zoom-in;flex:0 0 auto;align-self:flex-start}
+.photo-btn:hover img{filter:brightness(.92)}
+img.loading{background:linear-gradient(90deg,#EEF1F0,#F8FAF9,#EEF1F0);background-size:200% 100%;animation:shimmer 1.2s linear infinite}
+@keyframes shimmer{to{background-position:-200% 0}}
+.photo-busy{display:inline-flex;align-items:center;min-height:44px;padding:8px 14px;border-radius:10px;background:var(--tint);color:var(--accent-text);font-weight:600;font-size:14px}
+.lightbox{position:fixed;inset:0;z-index:50;background:rgba(10,20,18,.88);display:flex;align-items:center;justify-content:center;padding:56px 16px 24px;cursor:zoom-out}
+.lb-figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:12px;max-width:100%;max-height:100%}
+.lb-figure img{max-width:min(1600px,100%);max-height:calc(100vh - 140px);max-height:calc(100dvh - 140px);object-fit:contain;border-radius:12px;background:#1f2a28;min-width:120px;min-height:120px}
+.lb-figure figcaption{color:#E6F2F0;font-size:14px;text-align:center}
+.lb-close{position:fixed;top:12px;right:12px;width:44px;height:44px;border-radius:50%;border:none;background:rgba(255,255,255,.14);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.lb-close:hover{background:rgba(255,255,255,.24)}
+body.lb-open{overflow:hidden}
 .entry-actions{display:flex;gap:4px;flex-wrap:wrap;margin-left:-10px}
 .confirm{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:8px 12px;border-radius:10px;background:#FEF2F2}
 .confirm span{font-size:14px;font-weight:600;color:#991B1B;margin-right:4px}
@@ -502,7 +514,7 @@ textarea.input{resize:vertical;padding:10px 12px}
 }
 @media print{
   body{background:#fff}
-  .top-row .btn-primary,.child-bar,.search,.demo,.flash,.fab,.entry-actions,.confirm,aside .aside-actions,#allergyCard,#formHost,.tabs,#medCard .btn-link,.med-form,.top-actions,.top-deco,.child-delete,.occ-actions,.app-foot{display:none !important}
+  .top-row .btn-primary,.child-bar,.search,.demo,.flash,.fab,.entry-actions,.confirm,aside .aside-actions,#allergyCard,#formHost,.tabs,#medCard .btn-link,.med-form,.top-actions,.top-deco,.child-delete,.occ-actions,.app-foot,.lightbox{display:none !important}
   .top-band{background:none;color:var(--text)}
   .top-band .brand-name{color:var(--text)}
   .top-band .brand-sub{color:var(--muted)}
@@ -954,6 +966,17 @@ textarea.input{resize:vertical;padding:10px 12px}
 
 <!-- Izvještaj za ispis: puni se pri „Ispiši” iz panela za izvoz, vidljiv je samo na papiru. -->
 <section id="printView" class="print-view" aria-hidden="true"></section>
+
+<!-- Pregled fotografije u punoj veličini. Klik bilo gdje ili Esc zatvara. -->
+<div class="lightbox" id="lightbox" hidden role="dialog" aria-modal="true" aria-labelledby="lbCap" data-action="photo-close">
+  <figure class="lb-figure">
+    <img id="lbImg" alt="">
+    <figcaption id="lbCap"></figcaption>
+  </figure>
+  <button type="button" class="lb-close" id="lbClose" data-action="photo-close" aria-label="Zatvori fotografiju">
+    <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+  </button>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.115.0/dist/umd/supabase.js" defer></script>
 <script src="config.js" defer></script>
