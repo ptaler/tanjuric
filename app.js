@@ -1224,11 +1224,14 @@
         return '<button type="button" class="chip sq" data-action="f-type" data-val="' + esc(t) + '" aria-pressed="' + (f.type === t) + '">' + esc(t) + '</button>';
       }).join('') + '</div></fieldset>' +
 
-      '<div class="field"><label for="fFood">Što je dijete jelo?</label>' +
-      '<textarea id="fFood" class="input" rows="2" data-field="food" maxlength="300" placeholder="npr. zobena kaša s bananom i bademovim napitkom">' + esc(f.food) + '</textarea>' +
-      '<span class="hint">Upiši jelo i glavne namirnice, po mogućnosti i marku proizvoda.</span></div>' +
+      '<div class="field ac-field"><label for="fFood" id="fFoodLabel">Što je dijete jelo?</label>' +
+      '<textarea id="fFood" class="input" rows="2" data-field="food" maxlength="300" placeholder="npr. zobena kaša s bananom i bademovim napitkom"' +
+      ' role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="fFoodList" autocomplete="off">' + esc(f.food) + '</textarea>' +
+      '<ul id="fFoodList" class="ac-list" role="listbox" aria-labelledby="fFoodLabel" hidden></ul>' +
+      '<span class="hint">Upiši jelo i glavne namirnice, po mogućnosti i marku proizvoda. Ranije upisana jela nude se dok tipkaš.</span></div>' +
 
-      '<fieldset><legend>Alergeni u obroku</legend><div class="chips">' + chipsHtml(ALLERGENS, 'f-allergen', f.allergens, '', known) + '</div>' +
+      '<fieldset><legend>Alergeni u obroku</legend><div class="chips" id="fAllergenChips">' + chipsHtml(ALLERGENS, 'f-allergen', f.allergens, '', known) + '</div>' +
+      '<div id="fAllergenFrom" class="ac-note" role="status"></div>' +
       '<div id="fWarn" class="alert-warn" role="alert" style="margin-top:10px" hidden></div></fieldset>' +
 
       '<fieldset><legend>Je li bilo reakcije?</legend><div class="seg2">' +
@@ -1259,6 +1262,80 @@
     var hits = ui.form.allergens.filter(function (a) { return known.indexOf(a) >= 0; });
     el.hidden = !hits.length;
     el.textContent = hits.length ? 'Pažnja: ' + hits.join(', ') + (hits.length > 1 ? ' su' : ' je') + ' na popisu poznatih alergija (' + child.name + ').' : '';
+  }
+
+  // ---------- prijedlozi jela (autocomplete) ----------
+  // Ranija jela: najprije odabranog djeteta, zatim ostale djece; češća i novija ranije.
+  // Odabir upisuje naziv i preuzima alergene iz zadnjeg upisa tog jela.
+  var ac = { items: [], active: -1, open: false };
+  function foodSuggestions(q) {
+    var words = norm(q).trim().split(/[\s,.;:()/-]+/).filter(Boolean);
+    if (!words.length || norm(q).trim().length < 2) return [];
+    var child = activeChild(), by = {};
+    data.entries.forEach(function (e) {
+      if (e.demo && !(child && child.demo)) return;
+      if (ui.editingId && e.id === ui.editingId) return;
+      var key = norm(e.food).trim(); if (!key) return;
+      var g = by[key] || (by[key] = { key: key, food: e.food, count: 0, mine: false, last: null, lastReact: null });
+      g.count++;
+      if (child && e.childId === child.id) g.mine = true;
+      var at = e.date + e.time;
+      if (!g.last || at > g.last.date + g.last.time) { g.last = e; g.food = e.food; }
+      if (e.reaction && (!g.lastReact || at > g.lastReact.date + g.lastReact.time)) g.lastReact = e;
+    });
+    var exact = norm(q).trim();
+    return Object.keys(by).map(function (k) { return by[k]; }).filter(function (g) {
+      if (g.key === exact) return false;
+      var ws = g.key.split(/[\s,.;:()/-]+/);
+      return words.every(function (w) { return ws.some(function (x) { return x.indexOf(w) === 0; }); });
+    }).sort(function (a, b) {
+      return (b.mine - a.mine) || (b.count - a.count) || (b.last.date + b.last.time).localeCompare(a.last.date + a.last.time);
+    }).slice(0, 6);
+  }
+  function shortDate(iso) { var d = parseIso(iso); return d.getDate() + '. ' + (d.getMonth() + 1) + '.'; }
+  function renderAc() {
+    var list = $('#fFoodList'), ta = $('#fFood'); if (!list || !ta) return;
+    var child = activeChild(), known = knownOf(child);
+    ac.open = ac.items.length > 0;
+    list.hidden = !ac.open;
+    ta.setAttribute('aria-expanded', String(ac.open));
+    if (ac.active >= 0 && ac.open) ta.setAttribute('aria-activedescendant', 'fFoodOpt' + ac.active); else ta.removeAttribute('aria-activedescendant');
+    list.innerHTML = ac.items.map(function (g, i) {
+      var other = !g.mine ? data.children.filter(function (c) { return c.id === g.last.childId; })[0] : null;
+      var meta = [];
+      if (g.lastReact) meta.push('<span class="ac-react">' + ICON.warnSm + 'reakcija ' + esc(shortDate(g.lastReact.date)) + '</span>');
+      meta.push('<span>' + (g.count > 1 ? g.count + '× · ' : '') + 'zadnje ' + esc(shortDate(g.last.date)) + (other ? ' · ' + esc(other.name) : '') + '</span>');
+      return '<li id="fFoodOpt' + i + '" role="option" class="ac-item" aria-selected="' + (i === ac.active) + '" data-ac="' + i + '">' +
+        '<strong>' + esc(g.food) + '</strong>' +
+        (g.last.allergens.length ? '<span class="ac-tags">' + g.last.allergens.map(function (a) {
+          return '<span class="tag' + (known.indexOf(a) >= 0 ? ' warn' : '') + '">' + esc(a) + '</span>';
+        }).join('') + '</span>' : '') +
+        '<span class="ac-meta">' + meta.join('') + '</span></li>';
+    }).join('');
+  }
+  function updateAc() {
+    var ta = $('#fFood'); if (!ta || !ui.form) return;
+    ac.items = foodSuggestions(ta.value); ac.active = -1;
+    renderAc();
+  }
+  function closeAc() { ac.items = []; ac.active = -1; renderAc(); }
+  function pickAc(i) {
+    var g = ac.items[i], f = ui.form; if (!g || !f) return;
+    var ta = $('#fFood');
+    f.food = g.food; ta.value = g.food;
+    f.allergens = g.last.allergens.slice();
+    document.querySelectorAll('[data-action="f-allergen"]').forEach(function (b) {
+      b.setAttribute('aria-pressed', String(f.allergens.indexOf(b.getAttribute('data-val')) >= 0));
+    });
+    var note = $('#fAllergenFrom');
+    if (note) note.textContent = f.allergens.length
+      ? 'Alergeni su preuzeti iz upisa od ' + shortDate(g.last.date) + ' — provjeri jesu li isti.'
+      : 'U upisu od ' + shortDate(g.last.date) + ' nije bio označen nijedan alergen — provjeri.';
+    updateWarn();
+    showError('');
+    closeAc();
+    ta.focus();
+    ta.setSelectionRange(ta.value.length, ta.value.length);
   }
 
   function showError(msg) { var el = $('#fError'); if (el) { el.hidden = !msg; el.textContent = msg || ''; } }
@@ -1786,7 +1863,11 @@
     flash('Dodano dijete: ' + name + '. Označi poznate alergije u kartici „Poznate alergije”.');
   }
 
+  // Prijedlog jela: mousedown ne smije maknuti fokus s polja, odabir na klik.
+  document.addEventListener('mousedown', function (ev) { if (ev.target.closest && ev.target.closest('[data-ac]')) ev.preventDefault(); });
   document.addEventListener('click', function (ev) {
+    var acItem = ev.target.closest && ev.target.closest('[data-ac]');
+    if (acItem) { pickAc(Number(acItem.getAttribute('data-ac'))); return; }
     var b = ev.target.closest('[data-action]');
     if (!b) return;
     var a = b.getAttribute('data-action'), v = b.getAttribute('data-val'), id = b.getAttribute('data-id');
@@ -1918,7 +1999,9 @@
         b.parentNode.querySelectorAll('[data-action="f-type"]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
         break;
       case 'f-allergen':
-        b.setAttribute('aria-pressed', String(toggleIn(f.allergens, v))); updateWarn(); break;
+        b.setAttribute('aria-pressed', String(toggleIn(f.allergens, v))); updateWarn();
+        if ($('#fAllergenFrom')) $('#fAllergenFrom').textContent = '';
+        break;
       case 'f-symptom':
         b.setAttribute('aria-pressed', String(toggleIn(f.symptoms, v))); break;
       case 'f-severity':
@@ -2030,6 +2113,7 @@
     if (field && ui.form) {
       ui.form[field] = t.value;
       if (field === 'food' || field === 'dose' || field === 'value' || field === 'newMedName') showError('');
+      if (t.id === 'fFood') updateAc();
       if (ui.formKind === 'dose' && (field === 'date' || field === 'time' || field === 'newMedUnit' || field === 'dose')) updateDoseInfo();
       if (ui.formKind === 'temp' && field === 'value') updateTempBadge();
       return;
@@ -2097,7 +2181,19 @@
     else if (t.id === 'fPhotoInput' || t.id === 'fCameraInput') { readPhoto(t.files && t.files[0]); }
   });
 
+  document.addEventListener('focusout', function (ev) {
+    if (ev.target.id === 'fFood') setTimeout(function () { if (!document.activeElement || document.activeElement.id !== 'fFood') closeAc(); }, 150);
+  });
+
   document.addEventListener('keydown', function (ev) {
+    if (ev.target.id === 'fFood' && ac.open) {
+      var n = ac.items.length;
+      if (ev.key === 'ArrowDown') { ev.preventDefault(); ac.active = (ac.active + 1) % n; renderAc(); return; }
+      if (ev.key === 'ArrowUp') { ev.preventDefault(); ac.active = ac.active <= 0 ? n - 1 : ac.active - 1; renderAc(); return; }
+      if (ev.key === 'Enter' && ac.active >= 0) { ev.preventDefault(); pickAc(ac.active); return; }
+      if (ev.key === 'Escape') { ev.preventDefault(); closeAc(); return; }
+      if (ev.key === 'Tab') closeAc();
+    }
     if (!$('#lightbox').hidden) {
       if (ev.key === 'Escape') { ev.preventDefault(); closeLightbox(); }
       else if (ev.key === 'Tab') { ev.preventDefault(); $('#lbClose').focus(); }
