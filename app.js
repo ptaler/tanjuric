@@ -2263,7 +2263,12 @@
     $('#userName').textContent = name;
     $('#userAvatar').textContent = (name.trim().charAt(0) || '?').toUpperCase();
     $('#userName').title = user.email || '';
+    $('#adminLink').hidden = true;
     loadUserData();
+    // Poveznica na administraciju samo za administratore (public.admins).
+    sb.rpc('is_admin').then(function (res) {
+      if (auth.user === user) $('#adminLink').hidden = res.data !== true;
+    });
   }
 
   if (!sb) {
