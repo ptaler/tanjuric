@@ -322,6 +322,7 @@
     writeJson(cacheKey(), { dirty: true, data: data });
     setSyncState('saving');
     scheduleSync();
+    schedulePhotoCleanup(30000);
     return true;
   }
 
@@ -371,6 +372,8 @@
       showScreen('app');
       renderAll();
       setSyncState('ok');
+      migrateInlinePhotos();
+      schedulePhotoCleanup(15000);
     }).catch(function (err) {
       console.error(err);
       if (cached && normalize(cached.data)) {
@@ -559,7 +562,8 @@
       '<div class="body"><div class="title-row"><h3>' + esc(e.food) + '</h3>' + badge + '</div>' +
       (tags ? '<div class="tags">' + tags + '</div>' : '') + symptoms +
       (e.note ? '<p class="note">' + esc(e.note) + '</p>' : '') + actions + '</div>' +
-      (e.photo ? '<img class="photo" src="' + esc(e.photo) + '" alt="Fotografija obroka: ' + esc(e.food) + '">' : '') +
+      (e.photo ? '<button type="button" class="photo-btn" data-action="photo-open" data-path="' + esc(e.photo) + '" data-caption="' + esc(e.food + ' · ' + dayLabel(e.date).full + ' u ' + e.time) + '" aria-label="Prikaži fotografiju obroka ' + esc(e.food) + ' u punoj veličini">' +
+        photoImg(thumbPath(e.photo), 'Fotografija obroka: ' + e.food, 'photo') + '</button>' : '') +
       '</article>';
   }
 
@@ -1093,10 +1097,13 @@
 
   function photoRowHtml() {
     var f = ui.form;
-    return (f.photo ? '<img src="' + esc(f.photo) + '" alt="Odabrana fotografija">' : '') +
+    if (f.photoBusy) return '<span class="photo-busy" role="status">Spremam fotografiju…</span>';
+    return (f.photo ? '<button type="button" class="photo-btn" data-action="photo-open" data-path="' + esc(f.photo) + '" data-caption="' + esc(f.food || 'Odabrana fotografija') + '" aria-label="Prikaži fotografiju u punoj veličini">' +
+        photoImg(thumbPath(f.photo), 'Odabrana fotografija') + '</button>' : '') +
       '<label class="file-btn">' + ICON.camera + (f.photo ? 'Zamijeni fotografiju' : 'Dodaj fotografiju') +
       '<input type="file" accept="image/*" id="fPhotoInput"></label>' +
-      (f.photo ? '<button type="button" class="btn" data-action="f-photo-remove">Ukloni</button>' : '');
+      (f.photo ? '<button type="button" class="btn" data-action="f-photo-remove">Ukloni</button>' : '') +
+      (f.photoErr ? '<div class="alert-err" role="alert" style="flex:1 1 100%">' + esc(f.photoErr) + '</div>' : '');
   }
 
   function chipsHtml(list, action, selected, extraClass, knownList) {
@@ -1377,6 +1384,7 @@
 
   function saveMeal() {
     var f = ui.form;
+    if (f.photoBusy) { f.saveAfterPhoto = true; showError('Fotografija se još sprema — obrok će se spremiti čim ona bude gotova.'); return; }
     if (!String(f.food).trim()) { showError('Upiši što je dijete jelo.'); $('#fFood').focus(); return; }
     if (!f.date || !f.time) { showError('Upiši datum i vrijeme obroka.'); return; }
     var existing = data.entries.filter(function (x) { return x.id === ui.editingId; })[0];
@@ -1410,23 +1418,159 @@
     $('#main').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
+  // ---------- fotografije u Supabase Storageu ----------
+  // meals.photo = putanja pune slike u spremniku "photos" (<user_id>/<id>.jpg); sličica je <id>_t.jpg.
+  // Stari zapisi s ugrađenom slikom ("data:...") prikazuju se izravno i sami se prebacuju u spremnik.
+  var PHOTO_BUCKET = 'photos';
+  var photoUrls = {};          // putanja -> { url, exp }
+  var photoWanted = {}, photoTimer = null;
+  function isInlinePhoto(p) { return /^data:/.test(p || ''); }
+  function thumbPath(p) { return isInlinePhoto(p) ? p : String(p).replace(/\.jpg$/, '_t.jpg'); }
+
+  // Vraća URL ako ga već imamo, inače ga zatraži (potpisani URL vrijedi sat vremena) i vrati ''.
+  function photoUrl(key) {
+    if (!key) return '';
+    if (isInlinePhoto(key)) return key;
+    var c = photoUrls[key];
+    if (c && c.exp > Date.now() + 60000) return c.url;
+    photoWanted[key] = true;
+    clearTimeout(photoTimer);
+    photoTimer = setTimeout(fetchPhotoUrls, 20);
+    return '';
+  }
+  function fetchPhotoUrls() {
+    var keys = Object.keys(photoWanted); photoWanted = {};
+    if (!keys.length || !sb) return;
+    sb.storage.from(PHOTO_BUCKET).createSignedUrls(keys, 3600).then(function (res) {
+      if (res.error) throw res.error;
+      (res.data || []).forEach(function (r) {
+        if (!r.signedUrl) return;
+        photoUrls[r.path] = { url: r.signedUrl, exp: Date.now() + 3600000 };
+        setPhotoSrc(r.path, r.signedUrl);
+      });
+    }).catch(function (err) { console.error('Fotografije nije moguće učitati', err); });
+  }
+  function setPhotoSrc(key, url) {
+    document.querySelectorAll('img[data-photo-key]').forEach(function (img) {
+      if (img.getAttribute('data-photo-key') === key) { img.src = url; img.classList.remove('loading'); }
+    });
+  }
+  function photoImg(key, alt, cls) {
+    var url = photoUrl(key);
+    return '<img class="' + (cls || '') + (url ? '' : ' loading') + '" data-photo-key="' + esc(key) + '"' + (url ? ' src="' + esc(url) + '"' : '') + ' alt="' + esc(alt) + '">';
+  }
+
+  function canvasBlob(img, max, quality) {
+    var w = img.naturalWidth, h = img.naturalHeight, s = Math.min(1, max / Math.max(w, h));
+    var cv = document.createElement('canvas');
+    cv.width = Math.round(w * s); cv.height = Math.round(h * s);
+    cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+    return new Promise(function (ok, bad) { cv.toBlob(function (b) { b ? ok(b) : bad(new Error('toBlob')); }, 'image/jpeg', quality); });
+  }
+  function loadImage(src) {
+    return new Promise(function (ok, bad) { var im = new Image(); im.onload = function () { ok(im); }; im.onerror = bad; im.src = src; });
+  }
+  // Napravi punu sliku (do 1600 px) i sličicu (do 400 px) i pošalji obje u spremnik.
+  function uploadPhoto(src) {
+    var path = auth.user.id + '/' + uid() + '.jpg';
+    return loadImage(src).then(function (img) {
+      return Promise.all([canvasBlob(img, 1600, 0.82), canvasBlob(img, 400, 0.72)]);
+    }).then(function (blobs) {
+      var store = sb.storage.from(PHOTO_BUCKET), opts = { contentType: 'image/jpeg', cacheControl: '31536000', upsert: false };
+      return Promise.all([store.upload(path, blobs[0], opts), store.upload(thumbPath(path), blobs[1], opts)]).then(function (res) {
+        res.forEach(function (r) { if (r.error) throw r.error; });
+        var full = URL.createObjectURL(blobs[0]), thumb = URL.createObjectURL(blobs[1]);
+        photoUrls[path] = { url: full, exp: Infinity };
+        photoUrls[thumbPath(path)] = { url: thumb, exp: Infinity };
+        return path;
+      });
+    });
+  }
+
+  // Stare ugrađene slike (prije Storagea) prebaci u spremnik, jednu po jednu.
+  var migratingPhotos = false;
+  function migrateInlinePhotos() {
+    if (migratingPhotos || !sb || !auth.user) return;
+    var e = data.entries.filter(function (x) { return !x.demo && isInlinePhoto(x.photo); })[0];
+    if (!e) return;
+    migratingPhotos = true;
+    var inline = e.photo;
+    uploadPhoto(inline).then(function (path) {
+      data.entries = data.entries.map(function (x) { return x.id === e.id && x.photo === inline ? Object.assign({}, x, { photo: path }) : x; });
+      persist(); renderList();
+      migratingPhotos = false;
+      migrateInlinePhotos();
+    }).catch(function (err) { migratingPhotos = false; console.error('Prijenos stare fotografije nije uspio', err); });
+  }
+
+  // Datoteke u spremniku koje nijedan obrok više ne koristi (obrisan obrok ili dijete, zamijenjena slika)
+  // brišu se nakon sat vremena, da se ne dira slika s drugog uređaja koja još čeka sinkronizaciju.
+  var photoCleanT = null;
+  function schedulePhotoCleanup(delay) {
+    clearTimeout(photoCleanT);
+    photoCleanT = setTimeout(cleanupPhotos, delay == null ? 5000 : delay);
+  }
+  function cleanupPhotos() {
+    if (!sb || !auth.user) return;
+    var used = {};
+    data.entries.forEach(function (x) { if (x.photo && !isInlinePhoto(x.photo)) { used[x.photo] = true; used[thumbPath(x.photo)] = true; } });
+    if (ui.form && ui.form.photo) { used[ui.form.photo] = true; used[thumbPath(ui.form.photo)] = true; }
+    var folder = auth.user.id, store = sb.storage.from(PHOTO_BUCKET);
+    store.list(folder, { limit: 1000 }).then(function (res) {
+      if (res.error) throw res.error;
+      var old = Date.now() - 3600000;
+      var gone = (res.data || []).filter(function (f) {
+        var p = folder + '/' + f.name;
+        return f.id && !used[p] && new Date(f.created_at).getTime() < old;
+      }).map(function (f) { return folder + '/' + f.name; });
+      if (gone.length) return store.remove(gone);
+    }).catch(function (err) { console.error('Čišćenje fotografija nije uspjelo', err); });
+  }
+
+  var lbOpener = null;
+  function openLightbox(path, caption, opener) {
+    if (!path) return;
+    var lb = $('#lightbox'), img = $('#lbImg');
+    var url = photoUrl(path);
+    img.setAttribute('data-photo-key', path);
+    img.alt = caption || 'Fotografija obroka';
+    if (url) { img.src = url; img.classList.remove('loading'); }
+    else { img.removeAttribute('src'); img.classList.add('loading'); }
+    $('#lbCap').textContent = caption || '';
+    lbOpener = opener || null;
+    lb.hidden = false;
+    document.body.classList.add('lb-open');
+    $('#lbClose').focus();
+  }
+  function closeLightbox() {
+    var lb = $('#lightbox'); if (lb.hidden) return;
+    lb.hidden = true;
+    document.body.classList.remove('lb-open');
+    $('#lbImg').removeAttribute('data-photo-key');
+    if (lbOpener && document.contains(lbOpener)) lbOpener.focus();
+    lbOpener = null;
+  }
+
   function readPhoto(file) {
     if (!file || !/^image\//.test(file.type)) return;
+    var f = ui.form; if (!f) return;
     var url = URL.createObjectURL(file);
-    var img = new Image();
-    img.onload = function () {
-      var max = 900, w = img.naturalWidth, h = img.naturalHeight;
-      var s = Math.min(1, max / Math.max(w, h));
-      var cv = document.createElement('canvas');
-      cv.width = Math.round(w * s); cv.height = Math.round(h * s);
-      cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+    f.photoBusy = true; f.photoErr = '';
+    $('#fPhotoRow').innerHTML = photoRowHtml();
+    var job = f.photoJob = uploadPhoto(url).then(function (path) {
       URL.revokeObjectURL(url);
-      if (!ui.form) return;
-      ui.form.photo = cv.toDataURL('image/jpeg', 0.72);
+      if (ui.form !== f || f.photoJob !== job) return;
+      f.photo = path; f.photoBusy = false;
       $('#fPhotoRow').innerHTML = photoRowHtml();
-    };
-    img.onerror = function () { URL.revokeObjectURL(url); showError('Fotografiju nije moguće učitati.'); };
-    img.src = url;
+      if (f.saveAfterPhoto) { f.saveAfterPhoto = false; saveMeal(); }
+    }).catch(function (err) {
+      URL.revokeObjectURL(url);
+      console.error(err);
+      if (ui.form !== f || f.photoJob !== job) return;
+      f.photoBusy = false; f.saveAfterPhoto = false;
+      f.photoErr = 'Fotografiju nije moguće spremiti. Provjeri internetsku vezu i pokušaj ponovno.';
+      $('#fPhotoRow').innerHTML = photoRowHtml();
+    });
   }
 
   function toggleIn(arr, v) {
@@ -1780,7 +1924,9 @@
         $('#fReactBox').hidden = !f.reaction;
         break;
       case 'f-photo-remove':
-        f.photo = ''; $('#fPhotoRow').innerHTML = photoRowHtml(); break;
+        f.photo = ''; f.photoErr = ''; $('#fPhotoRow').innerHTML = photoRowHtml(); break;
+      case 'photo-open': openLightbox(b.getAttribute('data-path'), b.getAttribute('data-caption'), b); break;
+      case 'photo-close': closeLightbox(); break;
       case 'edit':
         openForm('meal', data.entries.filter(function (x) { return x.id === id; })[0]); break;
       case 'ask-delete':
@@ -1945,6 +2091,11 @@
   });
 
   document.addEventListener('keydown', function (ev) {
+    if (!$('#lightbox').hidden) {
+      if (ev.key === 'Escape') { ev.preventDefault(); closeLightbox(); }
+      else if (ev.key === 'Tab') { ev.preventDefault(); $('#lbClose').focus(); }
+      return;
+    }
     if (ev.key === 'Enter' && (ev.target.id === 'mTimeNew' || ev.target.id === 'occTime')) {
       ev.preventDefault();
       var go = document.querySelector(ev.target.id === 'mTimeNew' ? '[data-action="med-time-add"]' : '[data-action="occ-time-save"]');
@@ -1993,7 +2144,7 @@
   function signOut() {
     var u = auth.user;
     clearTimeout(sync.timer); clearTimeout(sync.retry);
-    sb.auth.signOut().then(function () {
+    sb.auth.signOut({ scope: 'local' }).then(function () {
       if (u) { try { localStorage.removeItem('tanjuric.cache.' + u.id); } catch (e) { /* ignore */ } }
     });
   }
@@ -2001,7 +2152,7 @@
   function onUser(user) {
     if (auth.ready && (user && user.id) === (auth.user && auth.user.id)) return;
     auth.ready = true;
-    auth.user = user;
+    auth.user = user; photoUrls = {}; closeLightbox();
     data = emptyData(); synced = {};
     ui.form = null; ui.editingId = null; ui.formKind = null; ui.legacy = null; ui.addingChild = false;
     if (!user) { setSignInDisabled(false); showScreen('login'); return; }
