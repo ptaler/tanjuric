@@ -236,6 +236,43 @@ textarea.input{resize:vertical;padding:10px 12px}
   .tl-item > .tl-node svg{width:15px;height:15px}
 }
 
+/* Daily therapy plan */
+.plan{display:flex;flex-direction:column;gap:10px;border-color:#DDD6FE;background:linear-gradient(180deg,#FAF8FF,#fff 120px)}
+.plan-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.plan-head .muted{font-size:13px}
+.plan-count{font-weight:700;font-size:15px;color:#5B21B6;background:#EDE9FE;border-radius:999px;padding:3px 12px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.plan-bar i{background:#7C3AED}
+.plan-day{font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-top:6px}
+.occ{display:flex;flex-wrap:wrap;gap:8px 14px;padding:12px;border-radius:14px;border:1px solid var(--line);background:#fff}
+.occ.due{border-color:#FDBA74;background:#FFFBF5}
+.occ.done{background:#F6FDF8;border-color:#BBF7D0}
+.occ.skipped{background:var(--soft);opacity:.85}
+.occ-time{flex:0 0 52px;display:flex;flex-direction:column;gap:1px}
+.occ-time .time{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums}
+.occ-time s{font-size:12px}
+.occ-body{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:6px}
+.occ-title{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px}
+.occ-title strong{font-size:16px}
+.occ-title .badge{margin-left:auto;display:inline-flex;align-items:center;gap:4px}
+.occ-title .badge svg{width:14px;height:14px}
+.badge.skip{background:#EEF1F0;color:var(--muted)}
+.occ-actions{flex:1 1 100%;display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;padding-left:56px}
+@media (max-width:480px){.occ-actions{padding-left:0;margin-left:-10px}.occ-actions .occ-confirm{margin-left:10px}.occ-editor{margin-left:10px}}
+.occ-actions .occ-confirm{margin-left:10px;min-height:44px;padding:8px 18px}
+.occ-actions .occ-confirm svg{width:18px;height:18px}
+.occ-editor{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-left:10px;padding:10px;border-radius:12px;background:var(--soft);border:1px solid var(--line)}
+.occ-editor label{font-size:14px;font-weight:600}
+.occ-editor .input{width:auto;min-width:120px}
+.med-sched{display:flex;flex-direction:column;gap:8px}
+.med-sched .chips{align-items:center}
+.time-chip{display:inline-flex;align-items:center;gap:2px;min-height:40px;padding:4px 4px 4px 12px;border-radius:999px;background:#EDE9FE;color:#5B21B6;font-weight:700;font-variant-numeric:tabular-nums}
+.chip-x{width:32px;height:32px;border:none;border-radius:50%;background:transparent;color:inherit;display:inline-flex;align-items:center;justify-content:center}
+.chip-x:hover{background:rgba(91,33,182,.12)}
+.chip-x svg{width:14px;height:14px}
+.time-add{display:inline-flex;gap:6px;align-items:center}
+.time-add .input{width:auto;min-width:110px}
+.med-sched-line{display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:600;color:#5B21B6}
+
 /* Therapy & temperature */
 .badge.info{background:var(--tint);color:var(--accent-text)}
 .entry h3.temp-val{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums}
@@ -426,7 +463,7 @@ textarea.input{resize:vertical;padding:10px 12px}
 }
 @media print{
   body{background:#fff}
-  .top-row .btn-primary,.child-bar,.search,.demo,.flash,.fab,.entry-actions,.confirm,aside .aside-actions,#allergyCard,#formHost,.tabs,#medCard .btn-link,.med-form,.top-actions,.top-deco,.child-delete{display:none !important}
+  .top-row .btn-primary,.child-bar,.search,.demo,.flash,.fab,.entry-actions,.confirm,aside .aside-actions,#allergyCard,#formHost,.tabs,#medCard .btn-link,.med-form,.top-actions,.top-deco,.child-delete,.occ-actions{display:none !important}
   .top-band{background:none;color:var(--text)}
   .top-band .brand-name{color:var(--text)}
   .top-band .brand-sub{color:var(--muted)}

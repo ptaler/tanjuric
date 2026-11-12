@@ -35,6 +35,7 @@
     x: '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12"/><path d="M18 6 6 18"/></svg>',
     edit: '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>',
     trash: '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="M6 7l1 13h10l1-13"/></svg>',
+    clock: '<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
     camera: '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>',
     check: '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg>',
     search: '<svg aria-hidden="true" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#A9B4B1" stroke-width="1.6" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>'
@@ -148,15 +149,18 @@
       ],
       meds: [
         { id: 'demo-med-par', childId: 'demo-lana', name: 'Paracetamol sirup', unit: 'ml', dose: 5, interval: 6, note: '120 mg / 5 ml', demo: true },
-        { id: 'demo-med-cet', childId: 'demo-lana', name: 'Cetirizin kapi', unit: 'kap', dose: 5, interval: 24, note: 'Kod osipa i svrbeža', demo: true },
+        { id: 'demo-med-cet', childId: 'demo-lana', name: 'Cetirizin kapi', unit: 'kap', dose: 5, interval: 10, note: 'Kod osipa i svrbeža',
+          times: ['08:00', '20:00'], since: day(3), until: '', demo: true },
         { id: 'demo-med-sal', childId: 'demo-marko', name: 'Salbutamol inhalator', unit: 'potisak', dose: 2, interval: 4, note: 'Uz komoricu', demo: true }
       ],
       doses: [
         D('demo-lana', 'demo-med-cet', 'Cetirizin kapi', 'kap', 1, '10:40', 5, 'Nakon osipa od keksa.'),
         D('demo-lana', 'demo-med-par', 'Paracetamol sirup', 'ml', 1, '20:15', 5, ''),
         D('demo-lana', 'demo-med-par', 'Paracetamol sirup', 'ml', 0, '07:10', 5, ''),
-        D('demo-marko', 'demo-med-sal', 'Salbutamol inhalator', 'potisak', 1, '16:15', 2, 'Piskanje nakon čokoladice.')
+        D('demo-marko', 'demo-med-sal', 'Salbutamol inhalator', 'potisak', 1, '16:15', 2, 'Piskanje nakon čokoladice.'),
+        Object.assign(D('demo-lana', 'demo-med-cet', 'Cetirizin kapi', 'kap', 0, '08:05', 5, ''), { slotDate: day(0), slot: '08:00' })
       ],
+      slots: [],
       temps: [
         T('demo-lana', 1, '20:00', 38.9, 'Uho', 'Malaksala, odbija večeru.'),
         T('demo-lana', 1, '22:30', 38.1, 'Uho', ''),
@@ -174,7 +178,8 @@
 
   function normalize(d) {
     if (!d || !Array.isArray(d.children) || !Array.isArray(d.entries)) return null;
-    ['meds', 'doses', 'temps'].forEach(function (k) { if (!Array.isArray(d[k])) d[k] = []; });
+    ['meds', 'doses', 'temps', 'slots'].forEach(function (k) { if (!Array.isArray(d[k])) d[k] = []; });
+    d.meds.forEach(function (m) { if (!Array.isArray(m.times)) m.times = []; });
     return d;
   }
   function readJson(key) {
@@ -185,7 +190,7 @@
     try { localStorage.setItem(key, JSON.stringify(v)); return true; }
     catch (e) { return false; }
   }
-  function emptyData() { return { v: 1, activeChild: null, children: [], entries: [], meds: [], doses: [], temps: [] }; }
+  function emptyData() { return { v: 1, activeChild: null, children: [], entries: [], meds: [], doses: [], temps: [], slots: [] }; }
 
   var data = emptyData();
 
@@ -213,11 +218,26 @@
           reaction: r.reaction, symptoms: r.symptoms || [], severity: r.severity, onset: zs(r.onset), note: r.note, photo: r.photo };
       } },
     { key: 'meds', table: 'meds',
-      to: function (m) { return { id: m.id, child_id: m.childId, name: m.name, unit: m.unit, dose: nz(m.dose), interval_h: nz(m.interval), note: m.note || '' }; },
-      from: function (r) { return { id: r.id, childId: r.child_id, name: r.name, unit: r.unit, dose: zs(r.dose), interval: zs(r.interval_h), note: r.note }; } },
+      to: function (m) {
+        return { id: m.id, child_id: m.childId, name: m.name, unit: m.unit, dose: nz(m.dose), interval_h: nz(m.interval), note: m.note || '',
+          times: m.times || [], since: m.since || null, until: m.until || null };
+      },
+      from: function (r) {
+        return { id: r.id, childId: r.child_id, name: r.name, unit: r.unit, dose: zs(r.dose), interval: zs(r.interval_h), note: r.note,
+          times: r.times || [], since: r.since || '', until: r.until || '' };
+      } },
     { key: 'doses', table: 'doses',
-      to: function (d) { return { id: d.id, child_id: d.childId, med_id: d.medId || null, med_name: d.medName, unit: d.unit || '', date: d.date, time: d.time, dose: Number(d.dose), note: d.note || '' }; },
-      from: function (r) { return { id: r.id, childId: r.child_id, medId: r.med_id, medName: r.med_name, unit: r.unit, date: r.date, time: r.time, dose: Number(r.dose), note: r.note }; } },
+      to: function (d) {
+        return { id: d.id, child_id: d.childId, med_id: d.medId || null, med_name: d.medName, unit: d.unit || '', date: d.date, time: d.time, dose: Number(d.dose), note: d.note || '',
+          slot_date: d.slot ? d.slotDate : null, slot: d.slot || null };
+      },
+      from: function (r) {
+        return { id: r.id, childId: r.child_id, medId: r.med_id, medName: r.med_name, unit: r.unit, date: r.date, time: r.time, dose: Number(r.dose), note: r.note,
+          slotDate: r.slot_date || '', slot: r.slot || '' };
+      } },
+    { key: 'slots', table: 'med_slots',
+      to: function (s) { return { id: s.id, child_id: s.childId, med_id: s.medId, date: s.date, slot: s.slot, time: s.time || null, skipped: !!s.skipped }; },
+      from: function (r) { return { id: r.id, childId: r.child_id, medId: r.med_id, date: r.date, slot: r.slot, time: r.time || '', skipped: r.skipped }; } },
     { key: 'temps', table: 'temps',
       to: function (t) { return { id: t.id, child_id: t.childId, date: t.date, time: t.time, value: Number(t.value), method: t.method || '', note: t.note || '' }; },
       from: function (r) { return { id: r.id, childId: r.child_id, date: r.date, time: r.time, value: Number(r.value), method: r.method, note: r.note }; } }
@@ -236,7 +256,7 @@
     // Ako je stvaran unos dodan primjeru djeteta, to dijete postaje stvarno.
     data.children.forEach(function (c) {
       if (!c.demo) return;
-      var used = ['entries', 'meds', 'doses', 'temps'].some(function (k) {
+      var used = ['entries', 'meds', 'doses', 'temps', 'slots'].some(function (k) {
         return data[k].some(function (x) { return !x.demo && x.childId === c.id; });
       });
       if (used) delete c.demo;
@@ -382,7 +402,7 @@
     addingChild: false, editingAllergies: false,
     tab: 'meals', formKind: null,
     medForm: null, medEditingId: null, confirmMedDeleteId: null,
-    confirmChildDeleteId: null, picking: false
+    confirmChildDeleteId: null, picking: false, occEdit: null
   };
   try {
     var savedTab = localStorage.getItem(TAB_KEY);
@@ -602,13 +622,13 @@
   function renderTimeline() {
     var child = activeChild(), host = $('#list');
     if (!child) { host.innerHTML = ''; return; }
-    var items = timelineItems(child), known = knownOf(child);
+    var items = timelineItems(child), known = knownOf(child), plan = planHtml(child);
     if (!items.length) {
-      host.innerHTML = emptyHtml('Još nema upisa', 'Ovdje će se na jednoj vremenskoj crti prikazivati obroci, reakcije, terapije i temperatura. Kreni gumbom „Novi upis”.');
+      host.innerHTML = plan + emptyHtml('Još nema upisa', 'Ovdje će se na jednoj vremenskoj crti prikazivati obroci, reakcije, terapije i temperatura. Kreni gumbom „Novi upis”.');
       return;
     }
     var KIND_NAME = { meal: 'Obrok', react: 'Reakcija', dose: 'Terapija', temp: 'Temperatura' };
-    host.innerHTML = groupByDay(items).map(function (g) {
+    host.innerHTML = plan + groupByDay(items).map(function (g) {
       var l = dayLabel(g.date);
       var n = g.items.filter(function (x) { return x.kind !== 'react'; }).length;
       var rows = g.items.map(function (x, i) {
@@ -624,6 +644,138 @@
       return '<section class="day"><div class="day-head"><h2>' + esc(l.rel) + '</h2><span class="muted" style="font-size:14px">' + esc(l.full) + '</span>' +
         '<span class="n">' + n + ' ' + plural(n, 'upis', 'upisa', 'upisa') + '</span></div><div class="tl">' + rows + '</div></section>';
     }).join('<div style="height:10px"></div>');
+  }
+
+  // ---------- svakodnevne terapije: plan, potvrde i pomaci ----------
+  // Termin (occurrence) = lijek + datum + vrijeme iz rasporeda (slot). Potvrda je obična doza
+  // s oznakom termina (slotDate/slot); pomak ili preskakanje za taj dan sprema se u data.slots.
+  function medActiveOn(m, date) {
+    return !!(m.times && m.times.length && (!m.since || m.since <= date) && (!m.until || date <= m.until));
+  }
+  function occurrences(child, date) {
+    var out = [];
+    childMeds(child).forEach(function (m) {
+      if (!medActiveOn(m, date)) return;
+      m.times.forEach(function (slot) {
+        var ov = data.slots.filter(function (s) { return s.medId === m.id && s.date === date && s.slot === slot; })[0] || null;
+        var dose = data.doses.filter(function (d) { return d.medId === m.id && d.slotDate === date && d.slot === slot; })[0] || null;
+        out.push({ med: m, date: date, slot: slot, time: ov && ov.time ? ov.time : slot, ov: ov, dose: dose, skipped: !!(ov && ov.skipped) });
+      });
+    });
+    return out.sort(function (a, b) { return a.time.localeCompare(b.time) || a.med.name.localeCompare(b.med.name, 'hr'); });
+  }
+  function occKey(o) { return o.med.id + '|' + o.date + '|' + o.slot; }
+  function findOcc(key) {
+    var p = String(key || '').split('|'); if (p.length < 3) return null;
+    var slot = p.pop(), date = p.pop(), medId = p.join('|');
+    var child = activeChild(); if (!child) return null;
+    return occurrences(child, date).filter(function (o) { return o.med.id === medId && o.slot === slot; })[0] || null;
+  }
+  function isoOffset(days) { var d = new Date(); d.setDate(d.getDate() + days); return toIso(d); }
+  function nowHm() { var n = new Date(); return pad(n.getHours()) + ':' + pad(n.getMinutes()); }
+
+  function occHtml(o) {
+    var k = occKey(o), m = o.med, at = stamp(o.date, o.time), diff = Date.now() - at, today = toIso(new Date());
+    var editing = ui.occEdit === k, moved = o.time !== o.slot;
+    var doseLbl = m.dose !== '' && m.dose != null ? doseText(m.dose, m.unit) : '';
+    function act(a, label, cls) { return '<button type="button" class="' + (cls || 'btn-link') + '" data-action="' + a + '" data-key="' + esc(k) + '" data-fk="' + a + '-' + esc(k) + '">' + label + '</button>'; }
+    function editor(value, label, withReset) {
+      return '<div class="occ-editor"><label for="occTime">' + label + '</label><input id="occTime" class="input" type="time" value="' + esc(value) + '">' +
+        '<button type="button" class="btn btn-primary" data-action="occ-time-save" data-key="' + esc(k) + '">Spremi</button>' +
+        '<button type="button" class="btn" data-action="occ-edit-cancel">Odustani</button>' +
+        (withReset ? '<button type="button" class="btn-link" data-action="occ-reset" data-key="' + esc(k) + '">Vrati na ' + esc(o.slot) + '</button>' : '') + '</div>';
+    }
+    var state, status, actions;
+    if (o.dose) {
+      state = 'done';
+      status = '<span class="badge ok">' + ICON.check + 'Dano u ' + esc(o.dose.time) + (o.dose.date !== o.date ? ' (' + esc(dayLabel(o.dose.date).rel.toLowerCase()) + ')' : '') + '</span>';
+      actions = editing ? editor(o.dose.time, 'Dano u', false)
+        : act('occ-edit', ICON.clock + 'Promijeni vrijeme') + act('occ-undo', 'Poništi potvrdu', 'btn-link grey');
+    } else if (o.skipped) {
+      state = 'skipped';
+      status = '<span class="badge skip">Preskočeno</span>';
+      actions = act('occ-unskip', 'Poništi');
+    } else {
+      state = diff >= 0 ? 'due' : 'upcoming';
+      status = o.date !== today ? '<span class="badge mod">Nije potvrđeno</span>'
+        : diff >= 0 ? '<span class="badge ' + (diff > 3600000 ? 'mod' : 'mild') + '">' + (diff < 60000 ? 'Sada' : 'Kasni ' + durText(diff)) + '</span>'
+        : '<span class="badge info">Za ' + durText(-diff) + '</span>';
+      actions = editing ? editor(o.time, 'Danas u', moved)
+        : act('occ-confirm', ICON.check + 'Potvrdi', 'btn btn-primary occ-confirm') + act('occ-edit', ICON.clock + 'Promijeni vrijeme') + act('occ-skip', 'Preskoči', 'btn-link grey');
+    }
+    return '<div class="occ ' + state + '">' +
+      '<div class="occ-time"><span class="time">' + esc(o.time) + '</span>' + (moved ? '<s class="muted">' + esc(o.slot) + '</s>' : '') + '</div>' +
+      '<div class="occ-body"><div class="occ-title"><strong>' + esc(m.name) + '</strong>' + (doseLbl ? '<span class="muted">' + esc(doseLbl) + '</span>' : '') + status + '</div>' +
+      (moved && !o.dose ? '<span class="hint">' + (o.date === today ? 'Danas' : 'Taj dan') + ' pomaknuto s ' + esc(o.slot) + '</span>' : '') +
+      '</div><div class="occ-actions">' + actions + '</div></div>';
+  }
+
+  function planHtml(child) {
+    var today = isoOffset(0), yest = isoOffset(-1);
+    var todayList = occurrences(child, today);
+    var yList = occurrences(child, yest).filter(function (o) { return !o.dose && !o.skipped; });
+    if (!todayList.length && !yList.length) return '';
+    var done = todayList.filter(function (o) { return o.dose || o.skipped; }).length;
+    var pct = todayList.length ? Math.round(done / todayList.length * 100) : 100;
+    return '<section class="card plan" aria-labelledby="planTitle">' +
+      '<div class="plan-head"><div><h2 id="planTitle">Svakodnevne terapije</h2><span class="muted">' + esc(dayLabel(today).full) + '</span></div>' +
+      (todayList.length ? '<span class="plan-count">' + done + ' / ' + todayList.length + '</span>' : '') + '</div>' +
+      (todayList.length ? '<div class="bar plan-bar" aria-hidden="true"><i style="width:' + pct + '%"></i></div>' : '') +
+      (yList.length ? '<div class="plan-day">Jučer — nije potvrđeno</div>' + yList.map(occHtml).join('') : '') +
+      (todayList.length ? (yList.length ? '<div class="plan-day">Danas</div>' : '') + todayList.map(occHtml).join('') : '') +
+      '</section>';
+  }
+
+  function setSlot(o, patch) {
+    var id = 'o|' + occKey(o);
+    var cur = data.slots.filter(function (s) { return s.id === id; })[0];
+    var next = Object.assign({ id: id, childId: o.med.childId, medId: o.med.id, date: o.date, slot: o.slot, time: '', skipped: false }, cur || {}, patch);
+    if (next.time === next.slot) next.time = '';
+    data.slots = data.slots.filter(function (s) { return s.id !== id; });
+    if (next.time || next.skipped) data.slots.push(next);
+  }
+
+  function occAction(a, key) {
+    var o = findOcc(key); if (!o) return;
+    var m = o.med, msg = '';
+    if (a === 'occ-confirm') {
+      if (o.dose) return;
+      var diff = Date.now() - stamp(o.date, o.time);
+      // Potvrda unutar sat vremena od termina (ili prije njega) bilježi stvarno vrijeme, inače vrijeme termina.
+      var useNow = diff > -12 * 3600000 && diff <= 3600000;
+      var dose = {
+        id: 'p|' + occKey(o), childId: m.childId, medId: m.id, medName: m.name, unit: m.unit,
+        date: useNow ? isoOffset(0) : o.date, time: useNow ? nowHm() : o.time, dose: Number(m.dose), note: '',
+        slotDate: o.date, slot: o.slot
+      };
+      data.doses = [dose].concat(data.doses.filter(function (d) { return d.id !== dose.id; }));
+      msg = 'Potvrđeno: ' + m.name + ' u ' + dose.time + '.';
+    } else if (a === 'occ-undo') {
+      data.doses = data.doses.filter(function (d) { return !(d.medId === m.id && d.slotDate === o.date && d.slot === o.slot); });
+      msg = 'Potvrda je poništena.';
+    } else if (a === 'occ-skip') {
+      setSlot(o, { skipped: true }); msg = m.name + ' u ' + o.time + ' je preskočen.';
+    } else if (a === 'occ-unskip') {
+      setSlot(o, { skipped: false }); msg = 'Termin je vraćen u plan.';
+    } else if (a === 'occ-reset') {
+      setSlot(o, { time: '' }); ui.occEdit = null; msg = 'Termin je vraćen na ' + o.slot + '.';
+    } else if (a === 'occ-time-save') {
+      var t = ($('#occTime') && $('#occTime').value || '').slice(0, 5);
+      if (!/^\d\d:\d\d$/.test(t)) { $('#occTime').focus(); return; }
+      if (o.dose) {
+        var upd = Object.assign({}, o.dose, { time: t });
+        data.doses = data.doses.map(function (d) { return d.id === upd.id ? upd : d; });
+        msg = 'Vrijeme uzimanja promijenjeno na ' + t + '.';
+      } else {
+        setSlot(o, { time: t });
+        msg = t === o.slot ? 'Termin je vraćen na ' + o.slot + '.' : 'Termin ' + o.slot + ' za ' + (o.date === isoOffset(0) ? 'danas' : 'taj dan') + ' pomaknut je na ' + t + '.';
+      }
+      ui.occEdit = null;
+    }
+    persist(); renderAll(); flash(msg);
+    var back = document.querySelector('[data-fk="occ-confirm-' + (window.CSS && CSS.escape ? CSS.escape(key) : key) + '"]') ||
+      document.querySelector('[data-fk="occ-edit-' + (window.CSS && CSS.escape ? CSS.escape(key) : key) + '"]');
+    if (back) back.focus({ preventScroll: true });
   }
 
   function pickerHtml() {
@@ -660,7 +812,7 @@
   function doseHtml(d) {
     var title = doseMedName(d);
     return '<article class="entry">' +
-      '<div class="when"><span class="time">' + esc(d.time) + '</span><span class="type">Terapija</span></div>' +
+      '<div class="when"><span class="time">' + esc(d.time) + '</span><span class="type">' + (d.slot ? 'Plan ' + esc(d.slot) : 'Terapija') + '</span></div>' +
       '<div class="body"><div class="title-row"><h3>' + esc(title) + '</h3><span class="badge info">' + esc(doseText(d.dose, d.unit)) + '</span></div>' +
       (d.note ? '<p class="note">' + esc(d.note) + '</p>' : '') +
       actionsHtml(d, 'dose', 'terapiju ' + title) + '</div></article>';
@@ -669,13 +821,13 @@
   function renderDoses() {
     var child = activeChild(), host = $('#list');
     if (!child) { host.innerHTML = ''; return; }
-    var list = ofChild(data.doses, child).sort(byNewest);
+    var list = ofChild(data.doses, child).sort(byNewest), plan = planHtml(child);
     if (!list.length) {
-      host.innerHTML = emptyHtml('Još nema zabilježenih terapija',
-        childMeds(child).length ? 'Upiši prvu terapiju gumbom „Nova terapija”.' : 'Dodaj lijekove koje ' + child.name + ' koristi u kartici „Lijekovi”, ili odmah upiši terapiju gumbom „Nova terapija”.');
+      host.innerHTML = plan + emptyHtml('Još nema zabilježenih terapija',
+        childMeds(child).length ? 'Upiši prvu terapiju gumbom „Nova terapija”, ili lijeku u kartici „Lijekovi” dodaj vremena za svakodnevnu terapiju.' : 'Dodaj lijekove koje ' + child.name + ' koristi u kartici „Lijekovi”, ili odmah upiši terapiju gumbom „Nova terapija”.');
       return;
     }
-    host.innerHTML = daysHtml(list, doseHtml, ['terapija', 'terapije', 'terapija']);
+    host.innerHTML = plan + daysHtml(list, doseHtml, ['terapija', 'terapije', 'terapija']);
   }
 
   function tempHtml(t) {
@@ -789,6 +941,16 @@
       '<div class="field"><label for="mUnit">Jedinica</label><select id="mUnit" class="input" data-mfield="unit">' + UNIT_KEYS.map(function (u) {
         return '<option value="' + esc(u) + '"' + (m.unit === u ? ' selected' : '') + '>' + esc(u) + '</option>';
       }).join('') + '</select></div></div>' +
+      '<fieldset class="med-sched"><legend>Svakodnevno u</legend>' +
+      '<div class="chips">' + m.times.map(function (t) {
+        return '<span class="time-chip">' + esc(t) + '<button type="button" class="chip-x" data-action="med-time-remove" data-val="' + esc(t) + '" aria-label="Ukloni ' + esc(t) + '">' + ICON.x + '</button></span>';
+      }).join('') +
+      '<span class="time-add"><label for="mTimeNew" class="sr-only">Novo vrijeme</label><input id="mTimeNew" class="input" type="time" value="">' +
+      '<button type="button" class="btn" data-action="med-time-add">' + ICON.plus + 'Dodaj</button></span></div>' +
+      '<span class="hint">Za terapiju koju dijete prima svaki dan u isto vrijeme. Svako uzimanje potvrđuješ u planu na kartici Terapije.</span>' +
+      (m.times.length ? '<div class="grid2"><div class="field"><label for="mSince">Od</label><input id="mSince" class="input" type="date" data-mfield="since" value="' + esc(m.since) + '"></div>' +
+        '<div class="field"><label for="mUntil">Do (nije obavezno)</label><input id="mUntil" class="input" type="date" data-mfield="until" value="' + esc(m.until) + '"></div></div>' : '') +
+      '</fieldset>' +
       '<div class="field"><label for="mInterval">Najmanji razmak između doza (sati)</label><input id="mInterval" class="input" type="text" inputmode="decimal" data-mfield="interval" value="' + esc(m.interval) + '" placeholder="npr. 6 — nije obavezno">' +
       '<span class="hint">Prema uputi liječnika. Ako je upisan, dobit ćeš upozorenje kad je nova doza preblizu prethodnoj.</span></div>' +
       '<div class="field"><label for="mNote">Napomena</label><input id="mNote" class="input" type="text" maxlength="200" data-mfield="note" value="' + esc(m.note) + '" placeholder="npr. jačina, za što se daje"></div>' +
@@ -812,7 +974,11 @@
         : '<div class="entry-actions">' +
           '<button type="button" class="btn-link" data-action="med-edit" data-id="' + esc(m.id) + '">' + ICON.edit + 'Uredi<span class="sr-only"> lijek ' + esc(m.name) + '</span></button>' +
           '<button type="button" class="btn-link grey" data-action="med-ask-delete" data-id="' + esc(m.id) + '" data-fk="mask-' + esc(m.id) + '">' + ICON.trash + 'Ukloni<span class="sr-only"> lijek ' + esc(m.name) + '</span></button></div>';
-      return '<div class="med-item"><strong>' + esc(m.name) + '</strong>' + (sub ? '<span class="muted">' + esc(sub) + '</span>' : '') +
+      var sched = m.times && m.times.length
+        ? '<span class="med-sched-line">' + ICON.clock + 'Svaki dan u ' + esc(m.times.join(', ')) +
+          (m.until ? ' · do ' + esc(dayLabel(m.until).full) : '') + (m.until && m.until < toIso(new Date()) ? ' (završeno)' : '') + '</span>'
+        : '';
+      return '<div class="med-item"><strong>' + esc(m.name) + '</strong>' + (sub ? '<span class="muted">' + esc(sub) + '</span>' : '') + sched +
         (m.note ? '<span class="muted" style="font-style:italic">' + esc(m.note) + '</span>' : '') + actions + '</div>';
     }).join('');
     var adding = ui.medForm && !ui.medEditingId;
@@ -1164,12 +1330,14 @@
     if (isNaN(dose) || dose <= 0) { showError('Upiši dozu kao broj, npr. 5 ili 2,5.'); $('#fDose').focus(); return; }
     if (!f.date || !f.time) { showError('Upiši datum i vrijeme.'); return; }
     if (newMed) newMed.dose = dose;
+    var keepSlot = existing && existing.slot && existing.medId === med.id;
     var entry = {
       id: existing ? existing.id : uid(),
       childId: existing ? existing.childId : child.id,
       medId: med.id, medName: med.name, unit: med.unit,
       date: f.date, time: f.time, dose: dose,
-      note: String(f.note || '').trim()
+      note: String(f.note || '').trim(),
+      slotDate: keepSlot ? existing.slotDate : '', slot: keepSlot ? existing.slot : ''
     };
     var prevD = data.doses, prevM = data.meds;
     if (newMed) data.meds = prevM.concat([newMed]);
@@ -1343,9 +1511,17 @@
         $('[data-fk="pick-meal"]').focus({ preventScroll: true });
         break;
       case 'pick-new': openForm(v, null); break;
+      case 'occ-confirm': case 'occ-undo': case 'occ-skip': case 'occ-unskip': case 'occ-reset': case 'occ-time-save':
+        occAction(a, b.getAttribute('data-key')); break;
+      case 'occ-edit':
+        ui.occEdit = b.getAttribute('data-key'); renderList();
+        if ($('#occTime')) $('#occTime').focus();
+        break;
+      case 'occ-edit-cancel':
+        ui.occEdit = null; renderList(); break;
       case 'tab':
         if (ui.tab === v) break;
-        ui.tab = v; ui.confirmDeleteId = null; ui.medForm = null; ui.medEditingId = null; ui.confirmMedDeleteId = null;
+        ui.tab = v; ui.confirmDeleteId = null; ui.occEdit = null; ui.medForm = null; ui.medEditingId = null; ui.confirmMedDeleteId = null;
         try { localStorage.setItem(TAB_KEY, v); } catch (e) { /* ignore */ }
         if (ui.form || ui.picking) closeForm();
         renderAll(); break;
@@ -1372,17 +1548,31 @@
         b.parentNode.querySelectorAll('[data-action="f-method"]').forEach(function (x) { x.setAttribute('aria-pressed', String(x.getAttribute('data-val') === f.method)); });
         break;
       case 'med-new':
-        ui.medForm = { name: '', unit: 'ml', dose: '', interval: '', note: '' }; ui.medEditingId = null; ui.confirmMedDeleteId = null;
+        ui.medForm = { name: '', unit: 'ml', dose: '', interval: '', note: '', times: [], since: '', until: '' }; ui.medEditingId = null; ui.confirmMedDeleteId = null;
         renderAside(); $('#mName').focus(); break;
       case 'med-edit': {
         var em = medById(id); if (!em) break;
         ui.medEditingId = id; ui.confirmMedDeleteId = null;
-        ui.medForm = { name: em.name, unit: em.unit, dose: em.dose === '' || em.dose == null ? '' : fmtNum(em.dose), interval: em.interval ? fmtNum(em.interval) : '', note: em.note || '' };
+        ui.medForm = { name: em.name, unit: em.unit, dose: em.dose === '' || em.dose == null ? '' : fmtNum(em.dose), interval: em.interval ? fmtNum(em.interval) : '', note: em.note || '',
+          times: (em.times || []).slice(), since: em.since || '', until: em.until || '' };
         renderAside(); $('#mName').focus(); break;
       }
       case 'med-cancel':
         ui.medForm = null; ui.medEditingId = null; renderAside(); break;
       case 'med-save': saveMed(); break;
+      case 'med-time-add': {
+        var mf = ui.medForm; if (!mf) break;
+        var nt = ($('#mTimeNew').value || '').slice(0, 5);
+        if (!/^\d\d:\d\d$/.test(nt)) { $('#mTimeNew').focus(); break; }
+        if (mf.times.indexOf(nt) < 0) { mf.times.push(nt); mf.times.sort(); }
+        if (!mf.since) mf.since = toIso(new Date());
+        renderAside(); $('#mTimeNew').focus(); break;
+      }
+      case 'med-time-remove': {
+        var mr = ui.medForm; if (!mr) break;
+        mr.times = mr.times.filter(function (t) { return t !== v; });
+        renderAside(); $('#mTimeNew').focus(); break;
+      }
       case 'med-ask-delete':
         ui.confirmMedDeleteId = id; ui.medForm = null; ui.medEditingId = null; renderAside();
         var md = document.querySelector('[data-fk="mdel-' + id + '"]'); if (md) md.focus();
@@ -1393,6 +1583,7 @@
         break;
       case 'med-delete':
         data.meds = data.meds.filter(function (m) { return m.id !== id; });
+        data.slots = data.slots.filter(function (s) { return s.medId !== id; });
         ui.confirmMedDeleteId = null;
         persist(); renderAll();
         if (ui.form && ui.formKind === 'dose') renderForm();
@@ -1400,7 +1591,7 @@
       case 'close-form': closeForm(); break;
       case 'save': saveForm(); break;
       case 'pick-child':
-        data.activeChild = id; ui.confirmDeleteId = null; ui.editingAllergies = false;
+        data.activeChild = id; ui.confirmDeleteId = null; ui.occEdit = null; ui.editingAllergies = false;
         ui.medForm = null; ui.medEditingId = null; ui.confirmMedDeleteId = null;
         closeForm(); persist(); renderAll(); break;
       case 'add-child-start':
@@ -1421,7 +1612,7 @@
         if (!gone) break;
         function other(x) { return x.childId !== id; }
         data.entries = data.entries.filter(other); data.meds = data.meds.filter(other);
-        data.doses = data.doses.filter(other); data.temps = data.temps.filter(other);
+        data.doses = data.doses.filter(other); data.temps = data.temps.filter(other); data.slots = data.slots.filter(other);
         data.children = data.children.filter(function (c) { return c.id !== id; });
         data.activeChild = data.children.length ? data.children[0].id : null;
         ui.confirmChildDeleteId = null; ui.confirmDeleteId = null; ui.editingAllergies = false;
@@ -1492,7 +1683,7 @@
       case 'clear-demo':
         function real(e) { return !e.demo; }
         data.entries = data.entries.filter(real); data.meds = data.meds.filter(real);
-        data.doses = data.doses.filter(real); data.temps = data.temps.filter(real);
+        data.doses = data.doses.filter(real); data.temps = data.temps.filter(real); data.slots = data.slots.filter(real);
         data.children = data.children.filter(function (c) {
           return !c.demo || [data.entries, data.meds, data.doses, data.temps].some(function (l) { return l.some(function (e) { return e.childId === c.id; }); });
         });
@@ -1509,7 +1700,7 @@
         var L = ui.legacy; if (!L) break;
         function keep(x) { return !x.demo; }
         data = { v: 1, activeChild: null, children: L.children.filter(keep), entries: L.entries.filter(keep),
-          meds: L.meds.filter(keep), doses: L.doses.filter(keep), temps: L.temps.filter(keep) };
+          meds: L.meds.filter(keep), doses: L.doses.filter(keep), temps: L.temps.filter(keep), slots: [] };
         data.activeChild = data.children.length ? data.children[0].id : null;
         try { localStorage.setItem(STORE_KEY + '.imported', '1'); } catch (e) { /* ignore */ }
         ui.legacy = null; ui.addingChild = !data.children.length;
@@ -1553,11 +1744,22 @@
     if (dose !== '' && (isNaN(dose) || dose <= 0)) return fail('Doza mora biti broj, npr. 5 ili 2,5.', '#mDose');
     var interval = String(m.interval).trim() === '' ? '' : parseNum(m.interval);
     if (interval !== '' && (isNaN(interval) || interval <= 0 || interval > 168)) return fail('Razmak upiši u satima, npr. 6.', '#mInterval');
+    var times = (m.times || []).slice().sort(), since = '', until = '';
+    if (times.length) {
+      if (dose === '') return fail('Za svakodnevnu terapiju upiši uobičajenu dozu — ona se upisuje pri svakoj potvrdi.', '#mDose');
+      since = m.since || toIso(new Date());
+      until = m.until || '';
+      // Promijenjeni termini vrijede od danas, da se ranijim danima ne pojave nepotvrđeni termini.
+      var prevMed = medById(ui.medEditingId), todayIso = toIso(new Date());
+      if (prevMed && (prevMed.times || []).join() !== times.join() && since === (prevMed.since || '') && since < todayIso) since = todayIso;
+      if (until && until < since) return fail('Datum „Do” ne može biti prije datuma „Od”.', '#mUntil');
+    }
     var existing = medById(ui.medEditingId);
     var med = {
       id: existing ? existing.id : uid(),
       childId: existing ? existing.childId : child.id,
-      name: name, unit: m.unit || 'ml', dose: dose, interval: interval, note: String(m.note || '').trim()
+      name: name, unit: m.unit || 'ml', dose: dose, interval: interval, note: String(m.note || '').trim(),
+      times: times, since: since, until: until
     };
     var prev = data.meds;
     data.meds = existing ? prev.map(function (x) { return x.id === med.id ? med : x; }) : prev.concat([med]);
@@ -1578,6 +1780,13 @@
   });
 
   document.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Enter' && (ev.target.id === 'mTimeNew' || ev.target.id === 'occTime')) {
+      ev.preventDefault();
+      var go = document.querySelector(ev.target.id === 'mTimeNew' ? '[data-action="med-time-add"]' : '[data-action="occ-time-save"]');
+      if (go) go.click();
+      return;
+    }
+    if (ev.key === 'Escape' && ev.target.id === 'occTime') { ui.occEdit = null; renderList(); return; }
     if (ev.target.getAttribute && ev.target.getAttribute('data-mfield') && ev.key === 'Enter' && ev.target.tagName === 'INPUT') {
       ev.preventDefault(); saveMed(); return;
     }
@@ -1586,6 +1795,15 @@
       else if (ev.key === 'Escape' && data.children.length) { ui.addingChild = false; renderChildren(); }
     }
   });
+
+  // Plan terapija prikazuje „za 20 min” / „kasni 5 min” — osvježi ga svake minute dok se ne uređuje.
+  setInterval(function () {
+    if (!auth.user || document.hidden || ui.occEdit) return;
+    if (ui.tab !== 'doses' && ui.tab !== 'all') return;
+    var ae = document.activeElement;
+    if (ae && ae.closest && ae.closest('#list .confirm')) return;
+    renderList();
+  }, 60000);
 
   // ---------- init ----------
   $('#fType').insertAdjacentHTML('beforeend', TYPES.map(function (t) { return '<option>' + esc(t) + '</option>'; }).join(''));
