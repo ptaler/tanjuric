@@ -84,7 +84,9 @@ h1,h2,h3,p{margin:0}
 .icon-btn{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:#fff;color:var(--text3);display:flex;align-items:center;justify-content:center;flex:0 0 auto}
 
 /* Layout */
-.layout{display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start;padding-top:24px;padding-bottom:96px}
+.layout{display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start;padding-top:24px;padding-bottom:32px}
+.app-foot{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 16px;border-top:1px solid var(--line);padding-top:16px;padding-bottom:96px;font-size:13px;color:var(--muted)}
+.app-foot a,.lp-foot a,.lp-final-contact a{color:var(--accent-text);font-weight:600}
 main{flex:999 1 560px;min-width:0;display:flex;flex-direction:column;gap:20px}
 aside{flex:1 1 280px;min-width:0;display:flex;flex-direction:column;gap:16px}
 main > div:empty{display:none}
@@ -191,6 +193,15 @@ textarea.input{resize:vertical;padding:10px 12px}
 .bar{height:8px;border-radius:999px;background:#EEF1F0;overflow:hidden}
 .bar i{display:block;height:8px;border-radius:999px;background:#EA580C}
 .foot-note{font-size:13px;color:var(--muted);border-top:1px solid #E6EBE9;padding-top:12px}
+.export-panel{display:flex;flex-direction:column;gap:14px;padding:14px;border-radius:14px;background:var(--soft);border:1px solid var(--line)}
+.export-panel > strong{font-size:15px}
+.export-panel .chips .chip{min-height:40px;padding:6px 12px}
+.check{display:flex;align-items:center;gap:10px;min-height:40px;font-size:14px;font-weight:600;cursor:pointer}
+.check input{width:20px;height:20px;accent-color:var(--accent);flex:0 0 auto}
+.check-row{display:flex;flex-wrap:wrap;gap:0 18px}
+.export-panel .aside-actions .btn{white-space:nowrap}
+.export-count{font-size:14px;font-weight:600;color:var(--accent-text);background:var(--tint);border-radius:10px;padding:8px 12px}
+.print-view{display:none}
 .child-delete{border-top:1px solid #E6EBE9;padding-top:4px}
 .child-delete:empty{display:none}
 .child-delete .btn-link{color:#B91C1C;margin-left:-10px}
@@ -334,7 +345,7 @@ textarea.input{resize:vertical;padding:10px 12px}
 .lp-app-top b{font-size:14px}
 .lp-kid{margin-left:auto;display:inline-flex;align-items:center;gap:6px;padding:3px 10px 3px 3px;border-radius:999px;background:var(--tint);color:var(--accent-text);font-weight:700;font-size:12px}
 .lp-kid i{width:20px;height:20px;border-radius:50%;background:var(--accent);color:#fff;font-style:normal;display:flex;align-items:center;justify-content:center;font-size:11px}
-.lp-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:4px}
+.lp-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:4px}
 .lp-tabs span{padding:6px 2px;border-radius:8px;text-align:center;font-weight:600;color:var(--text3);font-size:11px}
 .lp-tabs span.on{background:var(--tint);color:var(--accent-text)}
 .lp-day{font-weight:700;font-size:13px;padding:2px 4px 0}
@@ -414,6 +425,31 @@ textarea.input{resize:vertical;padding:10px 12px}
 .lp-final-art.a2{width:160px;right:-30px;top:-40px;transform:rotate(-14deg)}
 .lp-foot{padding:36px 0 44px;display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;font-size:13px;color:var(--muted)}
 .lp-foot .brand-name{font-size:15px}
+.lp-final-contact{font-size:15px !important;margin-top:4px}
+.lp-final-contact a{color:#fff;text-decoration:underline}
+.lp-float-ok{display:block;color:#166534;font-weight:600}
+.lp-mini-btn{align-self:flex-start;background:var(--accent);color:#fff;font-weight:700;border-radius:10px;padding:6px 14px;font-size:13px}
+.lp-split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:56px;align-items:center}
+.lp-split h2{margin:12px 0 14px}
+.lp-list{list-style:none;padding:0;margin:22px 0 0;display:flex;flex-direction:column;gap:12px}
+.lp-list li{display:flex;gap:12px;align-items:flex-start;line-height:1.5;color:var(--text3)}
+.lp-list li i{width:26px;height:26px;border-radius:50%;background:var(--tint);color:var(--accent);display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+.lp-tl-card{background:#fff;border:1px solid var(--line);border-radius:24px;padding:20px;box-shadow:0 30px 60px -30px rgba(23,33,31,.35);transform:rotate(1deg)}
+.lp-tl-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;font-size:15px}
+.lp-tl-head .muted{font-size:13px}
+.lp-tl{position:relative;padding-left:46px;display:flex;flex-direction:column}
+.lp-tl::before{content:"";position:absolute;left:17px;top:18px;bottom:18px;width:2px;background:var(--line2)}
+.lp-tl-item{position:relative}
+.lp-tl-item > .tl-node{position:absolute;left:-46px;top:8px;width:36px;height:36px;box-shadow:0 0 0 4px #fff}
+.lp-tl-row{display:flex;gap:12px;align-items:flex-start;padding:10px 12px;border:1px solid var(--line);border-radius:14px;background:#fff}
+.lp-tl-row.react{background:#FFF8F3;border-color:#FBD5BC}
+.lp-tl-row .t{font-weight:700;font-variant-numeric:tabular-nums;flex:0 0 48px;font-size:15px;line-height:1.2}
+.lp-tl-row .t small{display:block;font-size:11px;font-weight:500;color:var(--muted);margin-top:2px}
+.lp-tl-row .b{display:flex;flex-direction:column;align-items:flex-start;gap:5px;min-width:0;font-size:14px}
+.lp-tl-row .badge{font-size:12px;padding:2px 9px}
+.lp-tl-row .tag{font-size:12px}
+.lp-tl-row .tags{gap:4px}
+.lp-tl-gap{font-size:12px;font-weight:600;color:var(--muted);padding:6px 0 6px 4px}
 @media (max-width:900px){
   .lp-hero-grid{grid-template-columns:minmax(0,1fr);gap:16px}
   .lp-visual{min-height:0;padding:28px 0 8px}
@@ -421,6 +457,8 @@ textarea.input{resize:vertical;padding:10px 12px}
   .lp-steps{grid-template-columns:minmax(0,1fr);gap:32px}
   .lp-steps::before{display:none}
   .lp-band{grid-template-columns:minmax(0,1fr);padding:36px 24px;gap:36px;border-radius:26px}
+  .lp-split{grid-template-columns:minmax(0,1fr);gap:32px}
+  .lp-tl-card{transform:none}
   .lp-trust-row{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media (max-width:640px){
@@ -447,7 +485,8 @@ textarea.input{resize:vertical;padding:10px 12px}
 .fab{display:none}
 @media (max-width:640px){
   .wrap{padding-left:16px;padding-right:16px}
-  .layout{padding-top:16px;padding-bottom:112px}
+  .layout{padding-top:16px;padding-bottom:24px}
+  .app-foot{padding-bottom:112px}
   .top-row .btn-primary{display:none}
   .top-band .top-row{padding-top:16px;padding-bottom:16px;gap:14px}
   .top-band .logo{width:46px;height:46px;border-radius:14px}
@@ -463,7 +502,7 @@ textarea.input{resize:vertical;padding:10px 12px}
 }
 @media print{
   body{background:#fff}
-  .top-row .btn-primary,.child-bar,.search,.demo,.flash,.fab,.entry-actions,.confirm,aside .aside-actions,#allergyCard,#formHost,.tabs,#medCard .btn-link,.med-form,.top-actions,.top-deco,.child-delete,.occ-actions{display:none !important}
+  .top-row .btn-primary,.child-bar,.search,.demo,.flash,.fab,.entry-actions,.confirm,aside .aside-actions,#allergyCard,#formHost,.tabs,#medCard .btn-link,.med-form,.top-actions,.top-deco,.child-delete,.occ-actions,.app-foot{display:none !important}
   .top-band{background:none;color:var(--text)}
   .top-band .brand-name{color:var(--text)}
   .top-band .brand-sub{color:var(--muted)}
@@ -471,6 +510,21 @@ textarea.input{resize:vertical;padding:10px 12px}
   .entry,.card{break-inside:avoid;border-color:#bbb}
   .layout{display:block;padding:0}
   aside{margin-top:16px}
+  #exportBox{display:none !important}
+  /* Izvještaj iz panela za izvoz: ispisuje se samo on */
+  body.print-report #appShell,body.print-report #authScreen,body.print-report #loadingScreen{display:none !important}
+  body.print-report .print-view{display:block;color:#000;font-size:11px;line-height:1.35}
+  .pv-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;border-bottom:2px solid #0F766E;padding-bottom:8px;margin-bottom:10px}
+  .pv-head h1{font-size:18px;margin:0 0 4px}
+  .pv-head p{margin:2px 0}
+  .pv-brand{text-align:right;font-weight:700;color:#0F766E;font-size:14px;white-space:nowrap}
+  .pv-brand span{display:block;font-weight:400;font-size:10px;color:#444}
+  .pv-table{width:100%;border-collapse:collapse}
+  .pv-table th,.pv-table td{border:1px solid #bbb;padding:3px 5px;text-align:left;vertical-align:top}
+  .pv-table th{background:#E2F0EF;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .pv-table thead{display:table-header-group}
+  .pv-table tr{break-inside:avoid}
+  .pv-foot{margin-top:10px;font-size:10px;color:#444}
 }
 </style>
 </head>
@@ -535,7 +589,7 @@ textarea.input{resize:vertical;padding:10px 12px}
             <b>Tanjurić</b>
             <span class="lp-kid"><i>L</i>Lea</span>
           </div>
-          <div class="lp-tabs"><span class="on">Obroci</span><span>Terapije</span><span>Temperatura</span></div>
+          <div class="lp-tabs"><span>Sve</span><span class="on">Obroci</span><span>Terapije</span><span>Temp.</span></div>
           <div class="lp-day">Danas <small>utorak</small></div>
           <div class="lp-entry">
             <div class="t">12:30<small>Ručak</small></div>
@@ -559,7 +613,7 @@ textarea.input{resize:vertical;padding:10px 12px}
       </div>
       <div class="lp-float lp-float-dose">
         <span class="ic" style="background:#EDE9FE"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6D28D9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7z"/><path d="m8.5 8.5 7 7"/></svg></span>
-        <span><b>Paracetamol 5 ml</b>prije 3 h</span>
+        <span><b>Cetirizin u 20:00</b><span class="lp-float-ok">✓ Dano u 20:05</span></span>
       </div>
     </div>
   </div>
@@ -607,11 +661,11 @@ textarea.input{resize:vertical;padding:10px 12px}
           </svg>
         </div>
         <h3>Terapije</h3>
-        <p>Popis lijekova koje dijete koristi, s uobičajenom dozom i razmakom. Doza se upiše u nekoliko dodira, a aplikacija upozori ako upisani razmak od zadnje doze još nije prošao.</p>
+        <p>Lijekovi koje dijete koristi, s uobičajenom dozom. Za svakodnevnu terapiju zadaš vrijeme, a svako davanje potvrdiš jednim dodirom. Ako kasniš, pomakneš termin samo za taj dan.</p>
         <div class="lp-mini" aria-hidden="true">
-          <div class="lp-mini-row"><b>Ibuprofen sirup</b><span class="muted">5 ml</span></div>
-          <span class="muted">Danas u 14:10 · prije 4 h</span>
-          <span class="tag warn" style="align-self:flex-start">Upisani razmak od 6 h još nije prošao</span>
+          <div class="lp-mini-row"><b>08:00</b><span>Cetirizin kapi</span><span class="badge ok">✓ Dano u 08:05</span></div>
+          <div class="lp-mini-row"><b>20:00</b><span>Cetirizin kapi</span><span class="badge info">Za 2 h</span></div>
+          <span class="lp-mini-btn">✓ Potvrdi</span>
         </div>
       </article>
       <article class="lp-feature">
@@ -647,6 +701,37 @@ textarea.input{resize:vertical;padding:10px 12px}
   </div>
 </section>
 
+<section class="lp-section" style="padding-top:24px" aria-labelledby="lpTlTitle">
+  <div class="lp-wrap lp-split">
+    <div>
+      <span class="lp-kicker">Kartica „Sve”</span>
+      <h2 id="lpTlTitle">Obrok, reakcija i lijek na jednoj vremenskoj crti</h2>
+      <p class="lp-sub">Kad se pojavi osip, važno je znati što je dijete jelo i kada. Kartica „Sve” slaže obroke, reakcije, terapije i temperaturu po vremenu, pa se odmah vidi što je slijedilo nakon čega.</p>
+      <ul class="lp-list">
+        <li><i aria-hidden="true"><svg width="14" height="14"><use href="#lpCheck"/></svg></i><span>Reakcija se prikazuje u trenutku kad se javila, npr. 25 minuta nakon obroka.</span></li>
+        <li><i aria-hidden="true"><svg width="14" height="14"><use href="#lpCheck"/></svg></i><span>Razmak između događaja piše uz crtu, bez računanja.</span></li>
+        <li><i aria-hidden="true"><svg width="14" height="14"><use href="#lpCheck"/></svg></i><span>Plan svakodnevnih terapija za danas je na vrhu, s potvrdom svakog davanja.</span></li>
+      </ul>
+    </div>
+    <div class="lp-tl-card" aria-hidden="true">
+      <div class="lp-tl-head"><b>Danas</b><span class="muted">4 upisa</span></div>
+      <div class="lp-tl">
+        <div class="lp-tl-item"><span class="tl-node temp"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M14 14.8V5a2 2 0 1 0-4 0v9.8a4 4 0 1 0 4 0z"/><path d="M12 9v7"/></svg></span>
+          <div class="lp-tl-row"><div class="t">11:30<small>Pazuh</small></div><div class="b"><strong>37,4 °C</strong><span class="badge ok">Normalna</span></div></div></div>
+        <div class="lp-tl-gap">50 min kasnije ↑</div>
+        <div class="lp-tl-item"><span class="tl-node dose"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7z"/><path d="m8.5 8.5 7 7"/></svg></span>
+          <div class="lp-tl-row"><div class="t">10:40<small>Terapija</small></div><div class="b"><strong>Cetirizin kapi</strong><span class="badge info">5 kapi</span></div></div></div>
+        <div class="lp-tl-gap">15 min kasnije ↑</div>
+        <div class="lp-tl-item"><span class="tl-node react"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg></span>
+          <div class="lp-tl-row react"><div class="t">10:25<small>Reakcija</small></div><div class="b"><strong>Osip, svrbež</strong><span class="badge mod">umjerena</span><span class="muted">25 min nakon obroka: Keks iz vrtića</span></div></div></div>
+        <div class="lp-tl-gap">25 min kasnije ↑</div>
+        <div class="lp-tl-item"><span class="tl-node meal"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="7"/><circle cx="12" cy="13" r="3"/><path d="M4 3v5M20 3v5"/></svg></span>
+          <div class="lp-tl-row"><div class="t">10:00<small>Užina</small></div><div class="b"><strong>Keks iz vrtića</strong><div class="tags"><span class="tag">Gluten</span><span class="tag warn">Mlijeko · poznata alergija</span></div></div></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <section class="lp-section" style="padding-top:24px" aria-labelledby="lpStepsTitle">
   <div class="lp-wrap">
     <div class="lp-head">
@@ -667,7 +752,7 @@ textarea.input{resize:vertical;padding:10px 12px}
       <li class="lp-step">
         <div class="num" aria-hidden="true"><span>3</span><svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="#0F766E" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/></svg></div>
         <h3>Pokaži liječniku</h3>
-        <p>Pretraži po jelu ili alergenu, izdvoji obroke s reakcijom, pa ispiši pregled ili izvezi CSV.</p>
+        <p>Odaberi razdoblje, izdvoji obroke s reakcijom ili s određenim alergenom, pa ispiši izvještaj ili izvezi CSV.</p>
       </li>
     </ol>
   </div>
@@ -682,8 +767,8 @@ textarea.input{resize:vertical;padding:10px 12px}
         <p>Pregled za svako dijete pokazuje koliko je reakcija bilo u zadnjih tjedan dana i koji se alergeni najčešće javljaju u obrocima nakon kojih je bilo reakcije.</p>
         <ul>
           <li><i aria-hidden="true"><svg width="14" height="14" style="color:#5EEAD4"><use href="#lpCheck"/></svg></i><span><b>Poznate alergije</b> su istaknute uz svaki obrok u kojem se pojave.</span></li>
-          <li><i aria-hidden="true"><svg width="14" height="14" style="color:#5EEAD4"><use href="#lpCheck"/></svg></i><span><b>Filtri</b> po vrsti obroka, alergenu, razdoblju i samo za obroke s reakcijom.</span></li>
-          <li><i aria-hidden="true"><svg width="14" height="14" style="color:#5EEAD4"><use href="#lpCheck"/></svg></i><span><b>Ispis i CSV</b> za liječnika ili vlastitu arhivu.</span></li>
+          <li><i aria-hidden="true"><svg width="14" height="14" style="color:#5EEAD4"><use href="#lpCheck"/></svg></i><span><b>Izvoz za odabrano razdoblje:</b> samo obroci s reakcijom, s određenim alergenom, jedan lijek ili samo povišena temperatura.</span></li>
+          <li><i aria-hidden="true"><svg width="14" height="14" style="color:#5EEAD4"><use href="#lpCheck"/></svg></i><span><b>Uredan izvještaj na papiru</b> s razdobljem, poznatim alergijama i sažetkom, ili CSV za vlastitu arhivu.</span></li>
         </ul>
       </div>
       <div class="lp-paper" aria-hidden="true">
@@ -714,7 +799,7 @@ textarea.input{resize:vertical;padding:10px 12px}
       </div>
       <div class="lp-trust-item">
         <span class="ic" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0F766E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg></span>
-        <b>Poslužitelj u EU</b><span>Podaci se spremaju u Frankfurtu, u Europskoj uniji.</span>
+        <b>Čuvano u EU</b><span>Podaci se pohranjuju u Europskoj uniji.</span>
       </div>
       <div class="lp-trust-item">
         <span class="ic" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0F766E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="14" height="11" rx="2"/><rect x="15" y="9" width="7" height="12" rx="2"/><path d="M6 19h6"/></svg></span>
@@ -741,12 +826,14 @@ textarea.input{resize:vertical;padding:10px 12px}
           Prijava s Google računom
         </button>
       </div>
+      <p class="lp-final-contact">Imaš pitanje? Piši na <a href="mailto:info@tanjuric.net">info@tanjuric.net</a></p>
     </div>
   </div>
 </section>
 
 <footer class="lp-wrap lp-foot">
   <div class="brand"><span class="brand-name">Tanjurić</span></div>
+  <span>Pitanja i prijedlozi: <a href="mailto:info@tanjuric.net">info@tanjuric.net</a></span>
   <span>Tanjurić pomaže voditi evidenciju i ne zamjenjuje liječničku procjenu.</span>
 </footer>
 </div>
@@ -848,27 +935,25 @@ textarea.input{resize:vertical;padding:10px 12px}
     <section class="card aside-card" id="allergyCard"></section>
     <section class="card aside-card" id="dataCard">
       <h2>Podaci</h2>
-      <div class="aside-actions">
-        <button type="button" class="btn" data-action="export-csv">
-          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></svg>
-          Izvezi CSV
-        </button>
-        <button type="button" class="btn" data-action="print">
-          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/></svg>
-          Ispiši
-        </button>
-      </div>
-      <p class="foot-note">Podaci se spremaju na tvoj račun (poslužitelj u EU) i vidljivi su samo tebi. CSV je tvoja kopija za liječnika ili arhivu.</p>
+      <div id="exportBox"></div>
+      <p class="foot-note">Podaci se spremaju na tvoj račun i vidljivi su samo tebi. CSV je tvoja kopija za liječnika ili arhivu.</p>
       <div class="child-delete" id="childDelete"></div>
     </section>
   </aside>
 </div>
+<footer class="wrap app-foot">
+  <span>Pitanja, prijedlozi ili nešto ne radi? Piši na <a href="mailto:info@tanjuric.net">info@tanjuric.net</a></span>
+  <span>Tanjurić pomaže voditi evidenciju i ne zamjenjuje liječničku procjenu.</span>
+</footer>
 
 <button type="button" class="fab" data-action="new" id="fab">
   <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
   <span class="new-label">Novi obrok</span>
 </button>
 </div>
+
+<!-- Izvještaj za ispis: puni se pri „Ispiši” iz panela za izvoz, vidljiv je samo na papiru. -->
+<section id="printView" class="print-view" aria-hidden="true"></section>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.115.0/dist/umd/supabase.js" defer></script>
 <script src="config.js" defer></script>
