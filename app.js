@@ -39,6 +39,8 @@
     gallery: '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg>',
     camera: '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>',
     check: '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg>',
+    people: '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3 19c.6-3.2 3-5 6-5s5.4 1.8 6 5"/><circle cx="17" cy="9" r="2.4"/><path d="M16.5 14.2c2.4.2 4 1.7 4.5 4.3"/></svg>',
+    link: '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>',
     search: '<svg aria-hidden="true" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#A9B4B1" stroke-width="1.6" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>'
   };
 
@@ -208,7 +210,7 @@
   var SYNC = [
     { key: 'children', table: 'children',
       to: function (c) { return { id: c.id, name: c.name, allergies: c.allergies || [] }; },
-      from: function (r) { return { id: r.id, name: r.name, allergies: r.allergies || [] }; } },
+      from: function (r) { return { id: r.id, name: r.name, allergies: r.allergies || [], owner: r.user_id }; } },
     { key: 'entries', table: 'meals',
       to: function (e) {
         return { id: e.id, child_id: e.childId, date: e.date, time: e.time, type: e.type || '', food: e.food, allergens: e.allergens || [],
@@ -244,7 +246,20 @@
       from: function (r) { return { id: r.id, childId: r.child_id, date: r.date, time: r.time, value: Number(r.value), method: r.method, note: r.note }; } }
   ];
   var synced = {};      // table -> { id: json retka zadnje potvrđene verzije }
-  var sync = { busy: false, again: false, timer: null, retry: null, state: 'ok' };
+  var sync = { busy: false, again: false, timer: null, retry: null, state: 'ok', gen: 0 };
+
+  // ---------- dijeljenje djeteta ----------
+  // Dijete pripada vlasniku (children.user_id, u memoriji child.owner). Svi zapisi
+  // djeteta spremaju se pod user_id vlasnika, i kad ih upiše drugi roditelj.
+  function myId() { return auth.user ? auth.user.id : ''; }
+  function childById(id) { return data.children.filter(function (c) { return c.id === id; })[0] || null; }
+  function isMine(child) { return !child || !child.owner || child.owner === myId(); }
+  function ownerOf(childId) { var c = childById(childId); return (c && c.owner) || myId(); }
+  function rowOf(s, x) {
+    var row = s.to(x);
+    row.user_id = s.key === 'children' ? (x.owner || myId()) : ownerOf(x.childId);
+    return row;
+  }
 
   function setSyncState(s) {
     sync.state = s;
@@ -273,19 +288,25 @@
     if (!sb || !auth.user) return;
     if (sync.busy) { sync.again = true; return; }
     adoptDemoParents();
-    var uidv = auth.user.id, ups = [], dels = [];
+    var ups = [], dels = [];
     SYNC.forEach(function (s) {
       var prev = synced[s.table] || {}, seen = {}, rows = [];
       data[s.key].forEach(function (x) {
         if (x.demo) return;
-        var row = s.to(x); row.user_id = uidv;
+        var row = rowOf(s, x);
         var js = JSON.stringify(row);
         seen[x.id] = js;
         if (prev[x.id] !== js) rows.push(row);
       });
-      var gone = Object.keys(prev).filter(function (id) { return !(id in seen); });
+      // brisanje po vlasniku retka (vlastita i podijeljena djeca)
+      var byOwner = {};
+      Object.keys(prev).forEach(function (id) {
+        if (id in seen) return;
+        var owner = JSON.parse(prev[id]).user_id;
+        (byOwner[owner] = byOwner[owner] || []).push(id);
+      });
       if (rows.length) ups.push({ table: s.table, rows: rows });
-      if (gone.length) dels.push({ table: s.table, ids: gone });
+      Object.keys(byOwner).forEach(function (owner) { dels.push({ table: s.table, owner: owner, ids: byOwner[owner] }); });
       s._next = seen;
     });
     if (!ups.length && !dels.length) { markClean(); return; }
@@ -295,11 +316,11 @@
       p = p.then(function () { return sb.from(u.table).upsert(u.rows, { onConflict: 'user_id,id' }).then(check); });
     });
     dels.slice().reverse().forEach(function (d) {   // djeca prva, roditelji zadnji
-      p = p.then(function () { return sb.from(d.table).delete().eq('user_id', uidv).in('id', d.ids).then(check); });
+      p = p.then(function () { return sb.from(d.table).delete().eq('user_id', d.owner).in('id', d.ids).then(check); });
     });
     p.then(function () {
       SYNC.forEach(function (s) { synced[s.table] = s._next; });
-      sync.busy = false;
+      sync.busy = false; sync.gen++;
       markClean();
       if (sync.again) { sync.again = false; runSync(); }
     }).catch(function (err) {
@@ -308,19 +329,22 @@
       setSyncState('error');
       clearTimeout(sync.retry);
       sync.retry = setTimeout(runSync, 8000);
+      // RLS je odbio upis: vjerojatno je pristup podijeljenom djetetu prestao — osvježi pa
+      // mergeServer() makne dijete i njegove neposlane izmjene.
+      if (err && err.code === '42501') refreshFromServer(true);
     });
   }
   function check(res) { if (res.error) throw res.error; return res; }
 
   function markClean() {
-    writeJson(cacheKey(), { dirty: false, data: data });
+    writeJson(cacheKey(), { dirty: false, data: data, synced: synced });
     if (!sync.busy) setSyncState('ok');
   }
 
   function persist() {
     if (!auth.user) return false;
     savePrefs();
-    writeJson(cacheKey(), { dirty: true, data: data });
+    writeJson(cacheKey(), { dirty: true, data: data, synced: synced });
     setSyncState('saving');
     scheduleSync();
     schedulePhotoCleanup(30000);
@@ -331,18 +355,56 @@
     return Promise.all(SYNC.map(function (s) {
       return sb.from(s.table).select('*').then(check).then(function (res) { return { s: s, rows: res.data || [] }; });
     })).then(function (parts) {
-      var d = emptyData();
+      var d = emptyData(), map = {};
       parts.forEach(function (p) {
-        synced[p.s.table] = {};
+        map[p.s.table] = {};
         p.rows.forEach(function (r) {
           var obj = p.s.from(r);
           d[p.s.key].push(obj);
           var back = p.s.to(obj); back.user_id = r.user_id;
-          synced[p.s.table][obj.id] = JSON.stringify(back);
+          map[p.s.table][obj.id] = JSON.stringify(back);
         });
       });
-      return d;
+      return { data: d, synced: map };
     });
+  }
+
+  // Spoji stanje s poslužitelja (server) s lokalnim podacima, s obzirom na zadnju
+  // potvrđenu verziju (base). Lokalne izmjene koje još nisu poslane ostaju, a
+  // dodaci, izmjene i brisanja drugog roditelja (ili drugog uređaja) se preuzimaju.
+  function mergeServer(server, base) {
+    var out = { v: 1, activeChild: data.activeChild };
+    SYNC.forEach(function (s) {
+      var b = base[s.table] || {}, srvJs = server.synced[s.table] || {}, srv = {}, local = {}, list = [];
+      server.data[s.key].forEach(function (x) { srv[x.id] = x; });
+      data[s.key].forEach(function (x) {
+        if (x.demo) { list.push(x); return; }
+        local[x.id] = true;
+        var js = JSON.stringify(rowOf(s, x));
+        if (x.id in srv) list.push(js === b[x.id] ? srv[x.id] : x);   // nepromijenjeno lokalno → verzija s poslužitelja
+        else if (!(x.id in b) || js !== b[x.id]) list.push(x);        // novo ili izmijenjeno lokalno → ostaje
+        // inače: obrisano na poslužitelju
+      });
+      server.data[s.key].forEach(function (x) {
+        if (!local[x.id] && !(x.id in b)) list.push(x);                // dodano drugdje
+      });
+      if (s.key === 'children') {
+        // dijete drugog vlasnika koje više ne postoji na poslužitelju = pristup je prestao
+        list = list.filter(function (c) { return c.demo || isMine(c) || c.id in srvJs; });
+      }
+      out[s.key] = list;
+    });
+    var kids = {};
+    out.children.forEach(function (c) { kids[c.id] = true; });
+    SYNC.forEach(function (s) {
+      if (s.key !== 'children') out[s.key] = out[s.key].filter(function (x) { return kids[x.childId]; });
+    });
+    // samo primjeri lokalno, a na poslužitelju ima stvarne djece → primjeri odlaze
+    if (server.data.children.length && !Object.keys(base.children || {}).length &&
+        data.children.every(function (c) { return c.demo; })) {
+      out = server.data; out.activeChild = data.activeChild;
+    }
+    return normalize(out);
   }
 
   function legacyData() {
@@ -356,15 +418,19 @@
   function loadUserData() {
     showScreen('loading');
     var cached = readJson(cacheKey());
-    return fetchAll().then(function (server) {
+    return fetchAll().then(function (res) {
+      var server = res.data;
       var prefs = readJson('tanjuric.prefs.' + auth.user.id) || {};
       var isEmpty = !server.children.length;
       if (cached && cached.dirty && normalize(cached.data)) {
         data = cached.data;               // lokalne promjene koje nisu stigle na poslužitelj
+        data = mergeServer(res, cached.synced || {});
+        synced = res.synced;
         scheduleSync(0);
       } else if (!isEmpty) {
-        data = server;
+        data = server; synced = res.synced;
       } else {
+        synced = res.synced;
         data = prefs.demoCleared ? emptyData() : demoData();
         ui.legacy = legacyData();
       }
@@ -375,16 +441,148 @@
       setSyncState('ok');
       migrateInlinePhotos();
       schedulePhotoCleanup(15000);
+      loadShares();
+      checkPendingInvite();
     }).catch(function (err) {
       console.error(err);
       if (cached && normalize(cached.data)) {
-        data = cached.data; showScreen('app'); renderAll(); setSyncState('error'); scheduleSync(8000);
+        data = cached.data; synced = cached.synced || {};
+        showScreen('app'); renderAll(); setSyncState('error'); scheduleSync(8000);
         flash('Nema veze s poslužiteljem — prikazana je zadnja spremljena kopija s ovog uređaja.');
       } else {
         showScreen('login');
         var e = $('#authError'); e.hidden = false; e.textContent = 'Učitavanje podataka nije uspjelo. Provjeri internetsku vezu i pokušaj ponovno.';
       }
     });
+  }
+
+  // Osvježi podatke s poslužitelja (promjene drugog roditelja ili drugog uređaja).
+  // Ne dira ništa dok je otvoren obrazac ili potvrda, da se ne izgubi što korisnik radi.
+  var refreshing = false;
+  function uiBusy() {
+    return !!(ui.form || ui.medForm || ui.occEdit || ui.exp || ui.addingChild || ui.picking || ui.editingAllergies ||
+      ui.confirmDeleteId || ui.confirmMedDeleteId || ui.confirmChildDeleteId || ui.shareConfirm);
+  }
+  function refreshFromServer(force) {
+    if (!sb || !auth.user || refreshing || sync.busy) return Promise.resolve(false);
+    if (!force && uiBusy()) return Promise.resolve(false);
+    var user = auth.user, gen = sync.gen;
+    refreshing = true;
+    return fetchAll().then(function (res) {
+      refreshing = false;
+      if (auth.user !== user || sync.busy || sync.gen !== gen) return false;   // u međuvremenu je nešto poslano
+      if (!force && uiBusy()) return false;
+      var before = JSON.stringify(data);
+      var prevKids = data.children.slice();
+      data = mergeServer(res, synced);
+      synced = res.synced;
+      writeJson(cacheKey(), { dirty: sync.state !== 'ok', data: data, synced: synced });
+      if (JSON.stringify(data) === before) return true;
+      var lost = prevKids.filter(function (c) { return !c.demo && !childById(c.id); });
+      if (!childById(data.activeChild)) data.activeChild = data.children.length ? data.children[0].id : null;
+      if (!data.children.length) ui.addingChild = true;
+      renderAll();
+      if (lost.length) flash('Dijete ' + lost.map(function (c) { return c.name; }).join(', ') + ' više nije dostupno na tvom računu.');
+      if (sync.state !== 'ok') scheduleSync(0);
+      return true;
+    }).catch(function (err) { refreshing = false; console.error('Osvježavanje nije uspjelo', err); return false; });
+  }
+
+  // ---------- dijeljenje: stanje, pozivnice ----------
+  var INVITE_KEY = 'tanjuric.invite';
+  var shares = {};    // child_id -> { owner: {id,name,email}, members: [{id,name,email,since}] }
+  var invites = {};   // child_id -> { token, expires_at } (samo za vlastitu djecu)
+  function personName(p) { return p ? (p.name || p.email || 'drugi korisnik') : 'drugi korisnik'; }
+  function inviteLink(token) { return location.origin + location.pathname + '?pozivnica=' + token; }
+
+  function loadShares() {
+    if (!sb || !auth.user) return Promise.resolve();
+    var user = auth.user;
+    return Promise.all([
+      sb.rpc('child_shares').then(check),
+      sb.from('child_invites').select('token, child_id, expires_at').gt('expires_at', new Date().toISOString()).then(check)
+    ]).then(function (r) {
+      if (auth.user !== user) return;
+      var s = {}, inv = {};
+      (r[0].data || []).forEach(function (x) { s[x.child_id] = { owner: x.owner, members: x.members || [] }; });
+      (r[1].data || []).forEach(function (x) { inv[x.child_id] = x; });
+      var changed = JSON.stringify([s, inv]) !== JSON.stringify([shares, invites]);
+      shares = s; invites = inv;
+      if (changed) { renderChildren(); renderAside(); }
+    }).catch(function (err) { console.error('Podaci o dijeljenju nisu dostupni', err); });
+  }
+
+  // Poveznica ?pozivnica=<token>: zapamti je (preživi prijavu preko Googlea) i makni iz adrese.
+  (function captureInvite() {
+    try {
+      var params = new URLSearchParams(location.search), t = params.get('pozivnica');
+      if (!t) return;
+      if (/^[0-9a-f]{32}$/.test(t)) localStorage.setItem(INVITE_KEY, t);
+      params.delete('pozivnica');
+      var qs = params.toString();
+      history.replaceState(null, '', location.pathname + (qs ? '?' + qs : '') + location.hash);
+    } catch (e) { /* ignore */ }
+  })();
+  function pendingInvite() { try { return localStorage.getItem(INVITE_KEY) || ''; } catch (e) { return ''; } }
+  function clearInvite() { try { localStorage.removeItem(INVITE_KEY); } catch (e) { /* ignore */ } ui.invite = null; }
+
+  function checkPendingInvite() {
+    var token = pendingInvite();
+    if (!token || !sb || !auth.user) return;
+    var user = auth.user;
+    sb.rpc('child_invite_info', { p_token: token }).then(check).then(function (res) {
+      if (auth.user !== user) return;
+      var info = res.data || { status: 'invalid' };
+      if (info.status === 'member') {
+        clearInvite();
+        if (childById(info.child_id)) { data.activeChild = info.child_id; savePrefs(); renderAll(); }
+        flash('Već vidiš dnevnik za dijete ' + (info.child_name || '') + '.');
+        return;
+      }
+      ui.invite = { token: token, status: info.status, childId: info.child_id, childName: info.child_name || '', owner: info.owner, busy: false, err: '' };
+      renderDemoBanner();
+    }).catch(function (err) { console.error('Pozivnicu nije moguće provjeriti', err); });
+  }
+
+  function acceptInvite() {
+    var inv = ui.invite; if (!inv || inv.busy) return;
+    inv.busy = true; inv.err = ''; renderDemoBanner();
+    sb.rpc('accept_child_invite', { p_token: inv.token }).then(check).then(function () {
+      clearInvite();
+      return refreshFromServer(true).then(function (ok) {
+        if (!ok) return loadUserData();
+      });
+    }).then(function () {
+      if (childById(inv.childId)) data.activeChild = inv.childId;
+      ui.addingChild = false;
+      savePrefs(); renderAll(); loadShares();
+      flash('Sada zajedno vodite dnevnik za dijete ' + inv.childName + '.');
+    }).catch(function (err) {
+      console.error(err);
+      inv.busy = false;
+      inv.err = 'Prihvaćanje pozivnice nije uspjelo. Pozivnica je možda istekla ili je već iskorištena.';
+      renderDemoBanner();
+    });
+  }
+
+  function inviteBannerHtml() {
+    var inv = ui.invite; if (!inv) return '';
+    var who = esc(personName(inv.owner)), child = '<strong>' + esc(inv.childName) + '</strong>';
+    var body, actions;
+    if (inv.status === 'ok') {
+      body = who + ' te poziva da zajedno vodite dnevnik za dijete ' + child + '. Vidjet ćeš i moći upisivati obroke, terapije i temperaturu, a sve što upišeš vidjet će i ' + who + '.';
+      actions = '<button type="button" class="btn btn-primary" data-action="invite-accept" data-fk="invite-accept"' + (inv.busy ? ' disabled' : '') + '>' +
+        (inv.busy ? 'Prihvaćam…' : 'Prihvati poziv') + '</button>' +
+        '<button type="button" class="btn-link" data-action="invite-dismiss"' + (inv.busy ? ' disabled' : '') + '>Odbij</button>';
+    } else if (inv.status === 'own') {
+      body = 'Ovo je pozivnica za tvoje dijete ' + child + '. Pošalji poveznicu drugom roditelju da je otvori na svom računu.';
+      actions = '<button type="button" class="btn-link" data-action="invite-dismiss">U redu</button>';
+    } else {
+      body = 'Pozivnica ne vrijedi: istekla je ili je već iskorištena. Zamoli roditelja da ti pošalje novu poveznicu.';
+      actions = '<button type="button" class="btn-link" data-action="invite-dismiss">U redu</button>';
+    }
+    return '<div class="demo invite-banner" role="region" aria-label="Pozivnica"><span>' + body + '</span>' + actions +
+      (inv.err ? '<span class="alert-err" role="alert">' + esc(inv.err) + '</span>' : '') + '</div>';
   }
 
   function savePrefs() {
@@ -406,7 +604,8 @@
     addingChild: false, editingAllergies: false,
     tab: 'meals', formKind: null,
     medForm: null, medEditingId: null, confirmMedDeleteId: null,
-    confirmChildDeleteId: null, picking: false, occEdit: null, exp: null
+    confirmChildDeleteId: null, picking: false, occEdit: null, exp: null,
+    invite: null, shareConfirm: null, shareBusy: false, shareErr: ''
   };
   try {
     var savedTab = localStorage.getItem(TAB_KEY);
@@ -482,7 +681,8 @@
     var html = data.children.map(function (c) {
       var on = c.id === data.activeChild;
       return '<button type="button" class="child-chip" data-action="pick-child" data-id="' + esc(c.id) + '" data-fk="child-' + esc(c.id) + '" aria-pressed="' + on + '">' +
-        '<span class="av" aria-hidden="true">' + esc(c.name.charAt(0).toUpperCase()) + '</span>' + esc(c.name) + '</button>';
+        '<span class="av" aria-hidden="true">' + esc(c.name.charAt(0).toUpperCase()) + '</span>' + esc(c.name) +
+        (shares[c.id] ? '<span class="shared-ico" title="Podijeljeno">' + ICON.people + '<span class="sr-only">, podijeljeno</span></span>' : '') + '</button>';
     }).join('');
     if (ui.addingChild) {
       html += '<div class="add-child"><label for="newChild" class="sr-only">Ime djeteta</label>' +
@@ -516,7 +716,7 @@
         '<button type="button" class="btn btn-primary" data-action="import-legacy">Prenesi podatke</button>' +
         '<button type="button" class="btn-link" data-action="skip-legacy">Ne, hvala</button></div>'
       : '';
-    $('#demoBanner').innerHTML = legacy + (hasDemo
+    $('#demoBanner').innerHTML = inviteBannerHtml() + legacy + (hasDemo
       ? '<div class="demo"><span>Prikazani su <strong>primjeri</strong> da vidiš kako dnevnik izgleda. Primjeri se ne spremaju na tvoj račun.</span>' +
         '<button type="button" class="btn-link" data-action="clear-demo">Obriši primjere i kreni ispočetka</button></div>'
       : '');
@@ -1000,7 +1200,12 @@
     if (ui.exp && child && ui.exp.medId && !medById(ui.exp.medId)) ui.exp.medId = '';
     renderExport(child);
     renderChildDelete(child);
+    renderShareCard(child);
     renderMedCard(child);
+    var sh = child && shares[child.id];
+    $('#dataNote').textContent = sh
+      ? 'Zapise za dijete ' + child.name + ' vide i mogu mijenjati svi s kojima je dijete podijeljeno. CSV je tvoja kopija za liječnika ili arhivu.'
+      : 'Podaci se spremaju na tvoj račun i vidljivi su samo tebi. CSV je tvoja kopija za liječnika ili arhivu.';
     if (!child) { stats.hidden = true; ac.hidden = true; return; }
     stats.hidden = false;
     ac.hidden = ui.tab !== 'meals';
@@ -1036,6 +1241,21 @@
   function renderChildDelete(child) {
     var el = $('#childDelete');
     if (!child) { el.innerHTML = ''; return; }
+    if (!isMine(child)) {   // član: ukloni dijete sa svog računa (zapisi ostaju vlasniku)
+      var owner = personName(shares[child.id] && shares[child.id].owner);
+      el.innerHTML = ui.confirmChildDeleteId !== child.id
+        ? '<button type="button" class="btn-link" data-action="child-ask-delete" data-fk="child-del-ask">' + ICON.x +
+          'Ukloni dijete ' + esc(child.name) + ' sa svog računa</button>'
+        : '<div class="confirm-box" role="group" aria-labelledby="childDelTitle">' +
+          '<strong id="childDelTitle">Ukloniti dijete ' + esc(child.name) + ' sa svog računa?</strong>' +
+          '<span>Više nećeš vidjeti zapise za dijete ' + esc(child.name) + '. Ništa se ne briše: zapisi ostaju na računu vlasnika (' + esc(owner) +
+          '). Za ponovni pristup trebat ćeš novu pozivnicu.</span>' +
+          (ui.shareErr ? '<span class="alert-err" role="alert">' + esc(ui.shareErr) + '</span>' : '') +
+          '<div class="aside-actions"><button type="button" class="btn" data-action="child-delete-cancel" data-fk="child-del-cancel">Odustani</button>' +
+          '<button type="button" class="btn btn-danger" data-action="share-leave" data-id="' + esc(child.id) + '" data-fk="child-del-do"' +
+          (ui.shareBusy ? ' disabled' : '') + '>Ukloni</button></div></div>';
+      return;
+    }
     if (ui.confirmChildDeleteId !== child.id) {
       el.innerHTML = '<button type="button" class="btn-link" data-action="child-ask-delete" data-fk="child-del-ask">' + ICON.trash +
         'Obriši dijete ' + esc(child.name) + '</button>';
@@ -1050,6 +1270,8 @@
     var what = counts.length
       ? 'Obrisat će se i svi zapisi ovog djeteta: ' + (counts.length > 1 ? counts.slice(0, -1).join(', ') + ' i ' + counts[counts.length - 1] : counts[0]) + '.'
       : 'Za ovo dijete još nema zapisa.';
+    var sharedWith = shares[child.id] ? shares[child.id].members.map(personName) : [];
+    if (sharedWith.length) what += ' Dijete će nestati i kod: ' + sharedWith.join(', ') + '.';
     el.innerHTML = '<div class="confirm-box" role="group" aria-labelledby="childDelTitle">' +
       '<strong id="childDelTitle">Obrisati dijete ' + esc(child.name) + '?</strong>' +
       '<span>' + esc(what) + ' Brisanje se ne može poništiti.</span>' +
@@ -1068,6 +1290,158 @@
             return '<button type="button" class="chip warn" data-action="known-toggle" data-val="' + esc(a) + '" data-fk="known-' + esc(a) + '" aria-pressed="' + (known.indexOf(a) >= 0) + '">' + esc(a) + '</button>';
           }).join('') + '</div>'
         : '<span class="muted" style="font-size:14px">Označeni alergeni bit će istaknuti u svakom obroku, a pri unosu dobit ćeš upozorenje.</span>');
+  }
+
+  function personLi(p, note, removeId) {
+    var name = personName(p), initial = (name.trim().charAt(0) || '?').toUpperCase();
+    var li = '<li><span class="av" aria-hidden="true">' + esc(initial) + '</span><span class="who"><strong>' + esc(name) + '</strong>' +
+      (p && p.email && p.name ? '<span class="muted">' + esc(p.email) + '</span>' : '') + '</span>' +
+      (note ? '<span class="tag">' + esc(note) + '</span>' : '') +
+      (removeId && ui.shareConfirm !== removeId
+        ? '<button type="button" class="btn-link grey" data-action="share-remove-ask" data-id="' + esc(removeId) + '" data-fk="share-rm-' + esc(removeId) + '">Ukloni</button>'
+        : '') + '</li>';
+    if (removeId && ui.shareConfirm === removeId) {
+      var child = activeChild();
+      li += '<li class="share-confirm"><div class="confirm-box" role="group" aria-label="Uklanjanje pristupa">' +
+        '<strong>Ukloniti pristup za ' + esc(name) + '?</strong>' +
+        '<span>Više neće vidjeti zapise za dijete ' + esc(child ? child.name : '') + '. Već upisani zapisi ostaju sačuvani.</span>' +
+        '<div class="aside-actions"><button type="button" class="btn" data-action="share-remove-cancel" data-fk="share-rm-cancel">Odustani</button>' +
+        '<button type="button" class="btn btn-danger" data-action="share-remove" data-id="' + esc(removeId) + '" data-fk="share-rm-do"' +
+        (ui.shareBusy ? ' disabled' : '') + '>Ukloni pristup</button></div></div></li>';
+    }
+    return li;
+  }
+
+  function renderShareCard(child) {
+    var el = $('#shareCard');
+    if (!child || child.demo || !sb || !auth.user) { el.hidden = true; el.innerHTML = ''; return; }
+    el.hidden = false;
+    var sh = shares[child.id], me = myId(), you = { name: 'Ti', email: '' };
+    var html = '<h2>' + ICON.people + 'Dijeljenje</h2>';
+    if (!isMine(child)) {
+      html += '<p class="share-lead">' + esc(personName(sh && sh.owner)) + ' dijeli s tobom dnevnik za dijete ' + esc(child.name) +
+        '. Svi vidite i upisujete iste obroke, terapije i temperature.</p>';
+      if (sh) {
+        html += '<ul class="share-list" aria-label="Pristup imaju">' + personLi(sh.owner, 'vlasnik') +
+          sh.members.map(function (m) { return m.id === me ? personLi(you) : personLi(m); }).join('') + '</ul>';
+      }
+      el.innerHTML = html;
+      return;
+    }
+    var members = sh ? sh.members : [];
+    if (members.length) {
+      html += '<ul class="share-list" aria-label="Pristup imaju">' + personLi(you, 'vlasnik') +
+        members.map(function (m) { return personLi(m, '', m.id); }).join('') + '</ul>';
+    } else {
+      html += '<p class="share-lead">Pozovi drugog roditelja da sa svog Google računa vodi dnevnik za dijete ' + esc(child.name) +
+        '. Oboje ćete vidjeti i upisivati iste obroke, terapije i temperature.</p>';
+    }
+    var inv = invites[child.id];
+    if (inv) {
+      html += '<div class="share-invite"><label for="shareLink">Poveznica za poziv</label>' +
+        '<input id="shareLink" class="input" type="text" readonly value="' + esc(inviteLink(inv.token)) + '">' +
+        '<div class="aside-actions"><button type="button" class="btn btn-primary" data-action="share-copy" data-fk="share-copy">' + ICON.link + 'Kopiraj</button>' +
+        (navigator.share ? '<button type="button" class="btn" data-action="share-send" data-fk="share-send">Pošalji…</button>' : '') + '</div>' +
+        '<span class="share-hint">Poveznica vrijedi do ' + esc(hrDate(toIso(new Date(inv.expires_at)))) +
+        ' i može je iskoristiti jedna osoba. Pošalji je samo onome kome želiš dati pristup.</span>' +
+        '<button type="button" class="btn-link grey" data-action="share-cancel-link" data-fk="share-cancel-link">Poništi poveznicu</button></div>';
+    } else {
+      html += '<button type="button" class="btn" data-action="share-create" data-fk="share-create"' + (ui.shareBusy ? ' disabled' : '') + '>' +
+        ICON.plus + (members.length ? 'Pozovi još nekoga' : 'Pozovi drugog roditelja') + '</button>';
+    }
+    if (ui.shareErr) html += '<span class="alert-err" role="alert">' + esc(ui.shareErr) + '</span>';
+    el.innerHTML = html;
+  }
+
+  // Član je uklonio dijete sa svog računa: makni ga lokalno, bez brisanja na poslužitelju.
+  function dropSharedChild(id) {
+    function other(x) { return x.childId !== id; }
+    SYNC.forEach(function (s) {
+      var gone = data[s.key].filter(function (x) { return s.key === 'children' ? x.id === id : x.childId === id; });
+      gone.forEach(function (x) { if (synced[s.table]) delete synced[s.table][x.id]; });
+    });
+    data.entries = data.entries.filter(other); data.meds = data.meds.filter(other);
+    data.doses = data.doses.filter(other); data.temps = data.temps.filter(other); data.slots = data.slots.filter(other);
+    data.children = data.children.filter(function (c) { return c.id !== id; });
+    delete shares[id];
+    if (data.activeChild === id) data.activeChild = data.children.length ? data.children[0].id : null;
+    if (!data.children.length) ui.addingChild = true;
+  }
+
+  function shareAction(a, id) {
+    var child = activeChild(); if (!child || !sb) return;
+    var me = myId();
+    function done(msg, focus) {
+      ui.shareBusy = false; ui.shareErr = '';
+      renderAll();
+      if (msg) flash(msg);
+      var f = focus && document.querySelector('[data-fk="' + focus + '"]'); if (f) f.focus();
+    }
+    function fail(msg) { return function (err) { console.error(err); ui.shareBusy = false; ui.shareErr = msg; renderAside(); }; }
+    switch (a) {
+      case 'share-create':
+        if (!synced.children || !synced.children[child.id]) {
+          ui.shareErr = 'Dijete se još sprema na poslužitelj. Pokušaj ponovno za trenutak.'; scheduleSync(0); renderAside(); return;
+        }
+        ui.shareBusy = true; ui.shareErr = ''; renderAside();
+        sb.rpc('create_child_invite', { p_child_id: child.id }).then(check).then(function (res) {
+          invites[child.id] = res.data;
+          done('', 'share-copy');
+        }).catch(fail('Pozivnicu nije moguće napraviti. Provjeri internetsku vezu i pokušaj ponovno.'));
+        break;
+      case 'share-copy': {
+        var inp = $('#shareLink'); if (!inp) return;
+        var copied = navigator.clipboard ? navigator.clipboard.writeText(inp.value) : Promise.reject(new Error('clipboard'));
+        copied.then(function () { flash('Poveznica je kopirana. Pošalji je drugom roditelju.'); })
+          .catch(function () { inp.focus(); inp.select(); flash('Poveznica je označena — kopiraj je i pošalji.'); });
+        break;
+      }
+      case 'share-send': {
+        var inv = invites[child.id]; if (!inv || !navigator.share) return;
+        navigator.share({ title: 'Tanjurić', text: 'Pozivam te da u Tanjuriću zajedno vodimo dnevnik za dijete ' + child.name + '.', url: inviteLink(inv.token) })
+          .catch(function () { /* korisnik je odustao */ });
+        break;
+      }
+      case 'share-cancel-link': {
+        var tok = invites[child.id] && invites[child.id].token; if (!tok) return;
+        ui.shareBusy = true; renderAside();
+        sb.from('child_invites').delete().eq('token', tok).then(check).then(function () {
+          delete invites[child.id];
+          done('Poveznica je poništena i više ne vrijedi.', 'share-create');
+        }).catch(fail('Poništavanje nije uspjelo. Pokušaj ponovno.'));
+        break;
+      }
+      case 'share-remove-ask':
+        ui.shareConfirm = id; ui.shareErr = ''; renderAside();
+        var c = document.querySelector('[data-fk="share-rm-cancel"]'); if (c) c.focus();
+        break;
+      case 'share-remove-cancel':
+        var back = ui.shareConfirm; ui.shareConfirm = null; renderAside();
+        var r = document.querySelector('[data-fk="share-rm-' + back + '"]'); if (r) r.focus();
+        break;
+      case 'share-remove': {
+        var sh = shares[child.id], who = sh && sh.members.filter(function (m) { return m.id === id; })[0];
+        ui.shareBusy = true; renderAside();
+        sb.from('child_members').delete().match({ owner_id: me, child_id: child.id, member_id: id }).then(check).then(function () {
+          ui.shareConfirm = null;
+          if (sh) { sh.members = sh.members.filter(function (m) { return m.id !== id; }); if (!sh.members.length) delete shares[child.id]; }
+          done(personName(who) + ' više nema pristup dnevniku za dijete ' + child.name + '.', 'share-create');
+          loadShares();
+        }).catch(fail('Uklanjanje pristupa nije uspjelo. Pokušaj ponovno.'));
+        break;
+      }
+      case 'share-leave':
+        if (isMine(child) || child.id !== id) return;
+        ui.shareBusy = true; ui.shareErr = ''; renderAside();
+        sb.from('child_members').delete().match({ owner_id: child.owner, child_id: child.id, member_id: me }).then(check).then(function () {
+          ui.confirmChildDeleteId = null;
+          dropSharedChild(child.id);
+          closeForm(); persist();
+          done('Dijete ' + child.name + ' više nije na tvom računu.');
+          if (ui.addingChild && $('#newChild')) $('#newChild').focus();
+        }).catch(fail('Uklanjanje nije uspjelo. Provjeri internetsku vezu i pokušaj ponovno.'));
+        break;
+    }
   }
 
   function renderAll() {
@@ -1504,6 +1878,7 @@
 
   // ---------- fotografije u Supabase Storageu ----------
   // meals.photo = putanja pune slike u spremniku "photos" (<user_id>/<id>.jpg); sličica je <id>_t.jpg.
+  // user_id je vlasnik djeteta, pa i drugi roditelj sprema sliku u vlasnikovu mapu.
   // Stari zapisi s ugrađenom slikom ("data:...") prikazuju se izravno i sami se prebacuju u spremnik.
   var PHOTO_BUCKET = 'photos';
   var photoUrls = {};          // putanja -> { url, exp }
@@ -1555,8 +1930,8 @@
     return new Promise(function (ok, bad) { var im = new Image(); im.onload = function () { ok(im); }; im.onerror = bad; im.src = src; });
   }
   // Napravi punu sliku (do 1600 px) i sličicu (do 400 px) i pošalji obje u spremnik.
-  function uploadPhoto(src) {
-    var path = auth.user.id + '/' + uid() + '.jpg';
+  function uploadPhoto(src, owner) {
+    var path = (owner || auth.user.id) + '/' + uid() + '.jpg';
     return loadImage(src).then(function (img) {
       return Promise.all([canvasBlob(img, 1600, 0.82), canvasBlob(img, 400, 0.72)]);
     }).then(function (blobs) {
@@ -1575,7 +1950,7 @@
   var migratingPhotos = false;
   function migrateInlinePhotos() {
     if (migratingPhotos || !sb || !auth.user) return;
-    var e = data.entries.filter(function (x) { return !x.demo && isInlinePhoto(x.photo); })[0];
+    var e = data.entries.filter(function (x) { return !x.demo && isInlinePhoto(x.photo) && ownerOf(x.childId) === myId(); })[0];
     if (!e) return;
     migratingPhotos = true;
     var inline = e.photo;
@@ -1641,7 +2016,8 @@
     var url = URL.createObjectURL(file);
     f.photoBusy = true; f.photoErr = '';
     $('#fPhotoRow').innerHTML = photoRowHtml();
-    var job = f.photoJob = uploadPhoto(url).then(function (path) {
+    var child = activeChild();
+    var job = f.photoJob = uploadPhoto(url, child ? ownerOf(child.id) : '').then(function (path) {
       URL.revokeObjectURL(url);
       if (ui.form !== f || f.photoJob !== job) return;
       f.photo = path; f.photoBusy = false;
@@ -1853,7 +2229,7 @@
     var input = $('#newChild');
     var name = input ? input.value.trim() : '';
     if (!name) { if (input) input.focus(); return; }
-    var c = { id: uid(), name: name, allergies: [] };
+    var c = { id: uid(), name: name, allergies: [], owner: myId() };
     data.children.push(c);
     data.activeChild = c.id;
     ui.addingChild = false; ui.editingAllergies = true;
@@ -1872,7 +2248,10 @@
     if (!b) return;
     var a = b.getAttribute('data-action'), v = b.getAttribute('data-val'), id = b.getAttribute('data-id');
     var f = ui.form;
+    if (/^share-/.test(a)) { shareAction(a, id); return; }
     switch (a) {
+      case 'invite-accept': acceptInvite(); break;
+      case 'invite-dismiss': clearInvite(); renderDemoBanner(); break;
       case 'new':
         if (ui.tab !== 'all') { openForm(ui.tab === 'doses' ? 'dose' : ui.tab === 'temps' ? 'temp' : 'meal', null); break; }
         if (!activeChild()) break;
@@ -1963,6 +2342,7 @@
       case 'save': saveForm(); break;
       case 'pick-child':
         data.activeChild = id; ui.confirmDeleteId = null; ui.occEdit = null; ui.exp = null; ui.editingAllergies = false;
+        ui.shareConfirm = null; ui.shareErr = ''; ui.confirmChildDeleteId = null;
         ui.medForm = null; ui.medEditingId = null; ui.confirmMedDeleteId = null;
         closeForm(); persist(); renderAll(); break;
       case 'add-child-start':
@@ -1975,12 +2355,13 @@
         var cdc = document.querySelector('[data-fk="child-del-cancel"]'); if (cdc) cdc.focus();
         break;
       case 'child-delete-cancel':
-        ui.confirmChildDeleteId = null; renderAside();
+        ui.confirmChildDeleteId = null; ui.shareErr = ''; renderAside();
         var cda = document.querySelector('[data-fk="child-del-ask"]'); if (cda) cda.focus();
         break;
       case 'child-delete': {
         var gone = data.children.filter(function (c) { return c.id === id; })[0];
-        if (!gone) break;
+        if (!gone || !isMine(gone)) break;
+        delete shares[id]; delete invites[id];
         function other(x) { return x.childId !== id; }
         data.entries = data.entries.filter(other); data.meds = data.meds.filter(other);
         data.doses = data.doses.filter(other); data.temps = data.temps.filter(other); data.slots = data.slots.filter(other);
@@ -2256,9 +2637,10 @@
     if (auth.ready && (user && user.id) === (auth.user && auth.user.id)) return;
     auth.ready = true;
     auth.user = user; photoUrls = {}; closeLightbox();
-    data = emptyData(); synced = {};
+    data = emptyData(); synced = {}; shares = {}; invites = {};
     ui.form = null; ui.editingId = null; ui.formKind = null; ui.legacy = null; ui.addingChild = false;
-    if (!user) { setSignInDisabled(false); showScreen('login'); return; }
+    ui.invite = null; ui.shareConfirm = null; ui.shareErr = ''; ui.shareBusy = false;
+    if (!user) { setSignInDisabled(false); $('#inviteNote').hidden = !pendingInvite(); showScreen('login'); return; }
     var name = (user.user_metadata && (user.user_metadata.full_name || user.user_metadata.name)) || user.email || '';
     $('#userName').textContent = name;
     $('#userAvatar').textContent = (name.trim().charAt(0) || '?').toUpperCase();
@@ -2283,6 +2665,22 @@
     });
   }
   window.addEventListener('online', function () { if (sync.state === 'error') scheduleSync(0); });
+
+  // Promjene drugog roditelja: osvježi kad se korisnik vrati u aplikaciju, a dok je
+  // otvorena i dijete je podijeljeno, i svake minute.
+  var lastRefresh = Date.now();
+  function refreshNow() {
+    if (!auth.user || document.hidden) return;
+    lastRefresh = Date.now();
+    refreshFromServer(false);
+    loadShares();
+  }
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden && Date.now() - lastRefresh > 15000) refreshNow();
+  });
+  setInterval(function () {
+    if (Object.keys(shares).length && Date.now() - lastRefresh > 55000) refreshNow();
+  }, 60000);
   window.addEventListener('beforeunload', function (ev) {
     if (sync.busy || sync.state !== 'ok') { ev.preventDefault(); ev.returnValue = ''; }
   });
