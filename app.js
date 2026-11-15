@@ -1178,9 +1178,8 @@
       '<div class="chips">' + m.times.map(function (t) {
         return '<span class="time-chip">' + esc(t) + '<button type="button" class="chip-x" data-action="med-time-remove" data-val="' + esc(t) + '" aria-label="Ukloni ' + esc(t) + '">' + ICON.x + '</button></span>';
       }).join('') +
-      '<span class="time-add"><label for="mTimeNew" class="sr-only">Novo vrijeme</label><input id="mTimeNew" class="input" type="time" value="">' +
-      '<button type="button" class="btn" data-action="med-time-add">' + ICON.plus + 'Dodaj</button></span></div>' +
-      '<span class="hint">Za terapiju koju dijete prima svaki dan u isto vrijeme. Svako uzimanje potvrđuješ u planu na kartici Terapije.</span>' +
+      '<span class="time-add"><label for="mTimeNew" class="sr-only">' + (m.times.length ? 'Dodaj još jedno vrijeme' : 'Vrijeme') + '</label><input id="mTimeNew" class="input" type="time" value=""></span></div>' +
+      '<span class="hint">Za terapiju koju dijete prima svaki dan u isto vrijeme. Upisano vrijeme doda se samo, a za svako sljedeće upiši novo. Svako uzimanje potvrđuješ u planu na kartici Terapije.</span>' +
       (m.times.length ? '<div class="grid2"><div class="field"><label for="mSince">Od</label><input id="mSince" class="input" type="date" data-mfield="since" value="' + esc(m.since) + '"></div>' +
         '<div class="field"><label for="mUntil">Do (nije obavezno)</label><input id="mUntil" class="input" type="date" data-mfield="until" value="' + esc(m.until) + '"></div></div>' : '') +
       '</fieldset>' +
@@ -2423,14 +2422,7 @@
       case 'med-cancel':
         ui.medForm = null; ui.medEditingId = null; renderAside(); break;
       case 'med-save': saveMed(); break;
-      case 'med-time-add': {
-        var mf = ui.medForm; if (!mf) break;
-        var nt = ($('#mTimeNew').value || '').slice(0, 5);
-        if (!/^\d\d:\d\d$/.test(nt)) { $('#mTimeNew').focus(); break; }
-        if (mf.times.indexOf(nt) < 0) { mf.times.push(nt); mf.times.sort(); }
-        if (!mf.since) mf.since = toIso(new Date());
-        renderAside(); $('#mTimeNew').focus(); break;
-      }
+      case 'med-time-add': addMedTime(true); break;
       case 'med-time-remove': {
         var mr = ui.medForm; if (!mr) break;
         mr.times = mr.times.filter(function (t) { return t !== v; });
@@ -2622,8 +2614,26 @@
     }
   });
 
+  // Vrijeme za svakodnevnu terapiju dodaje se samo: kad je polje potpuno upisano
+  // (nakon kratke stanke, da se ne doda napola utipkana minuta), pri izlasku iz polja,
+  // na Enter i pri spremanju lijeka.
+  var medTimeT = null;
+  function addMedTime(keepFocus) {
+    clearTimeout(medTimeT);
+    var mf = ui.medForm, inp = $('#mTimeNew'); if (!mf || !inp) return false;
+    var nt = (inp.value || '').slice(0, 5);
+    if (!/^\d\d:\d\d$/.test(nt)) return false;
+    var added = mf.times.indexOf(nt) < 0;
+    if (added) { mf.times.push(nt); mf.times.sort(); }
+    if (!mf.since) mf.since = toIso(new Date());
+    renderAside();
+    var ni = $('#mTimeNew'); if (keepFocus && ni) ni.focus();
+    return added;
+  }
+
   function saveMed() {
     var m = ui.medForm, child = activeChild(); if (!m || !child) return;
+    addMedTime(false);   // vrijeme koje je upisano, ali još nije dodano
     var err = $('#mError');
     function fail(msg, focusSel) { err.hidden = false; err.textContent = msg; if (focusSel) $(focusSel).focus(); }
     var name = String(m.name || '').trim();
@@ -2663,6 +2673,11 @@
 
   document.addEventListener('change', function (ev) {
     var t = ev.target;
+    if (t.id === 'mTimeNew') {
+      clearTimeout(medTimeT);
+      if (t.value) medTimeT = setTimeout(function () { addMedTime(document.activeElement === t); }, 900);
+      return;
+    }
     var xf = t.getAttribute && t.getAttribute('data-xfield');
     if (xf && ui.exp) {
       ui.exp[xf] = t.type === 'checkbox' ? t.checked : t.value;
@@ -2682,6 +2697,13 @@
   });
 
   document.addEventListener('focusout', function (ev) {
+    // Izlazak iz polja za vrijeme lijeka dodaje vrijeme; ne kad se klikne gumb u obrascu
+    // (Spremi ga doda sam, a novi prikaz bi „pojeo” klik).
+    if (ev.target.id === 'mTimeNew') {
+      var rt = ev.relatedTarget;
+      if (!(rt && rt.closest && rt.closest('#medForm button'))) addMedTime(false);
+      return;
+    }
     if (ev.target.id === 'fFood') setTimeout(function () { if (!document.activeElement || document.activeElement.id !== 'fFood') closeAc(); }, 150);
   });
 
@@ -2699,9 +2721,10 @@
       else if (ev.key === 'Tab') { ev.preventDefault(); $('#lbClose').focus(); }
       return;
     }
-    if (ev.key === 'Enter' && (ev.target.id === 'mTimeNew' || ev.target.id === 'occTime')) {
+    if (ev.key === 'Enter' && ev.target.id === 'mTimeNew') { ev.preventDefault(); addMedTime(true); return; }
+    if (ev.key === 'Enter' && ev.target.id === 'occTime') {
       ev.preventDefault();
-      var go = document.querySelector(ev.target.id === 'mTimeNew' ? '[data-action="med-time-add"]' : '[data-action="occ-time-save"]');
+      var go = document.querySelector('[data-action="occ-time-save"]');
       if (go) go.click();
       return;
     }
