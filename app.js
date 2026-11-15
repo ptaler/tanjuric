@@ -248,6 +248,7 @@
       from: function (r) { return { id: r.id, childId: r.child_id, date: r.date, time: r.time, value: Number(r.value), method: r.method, note: r.note }; } }
   ];
   var synced = {};      // table -> { id: json retka zadnje potvrđene verzije }
+  var fullLoadUser = null;   // korisnik čiji su podaci u ovoj sesiji cijeli dohvaćeni s poslužitelja
   var sync = { busy: false, again: false, timer: null, retry: null, state: 'ok', gen: 0 };
 
   // ---------- dijeljenje djeteta ----------
@@ -353,9 +354,31 @@
     return true;
   }
 
+  // Supabase vraća najviše „Max rows” redaka po upitu (zadano 1000), pa se tablica čita
+  // stranicu po stranicu. Nepotpun dohvat bi izgledao kao da su upisi obrisani na poslužitelju.
+  // Straniči se po ključu (user_id, id), a ne po pomaku, da istodobni upisi ne preskoče redak.
+  // FETCH_PAGE ne smije biti veći od „Max rows” u postavkama projekta.
+  var FETCH_PAGE = 1000;
+  function fetchTable(table) {
+    var rows = [];
+    function page(after) {
+      var q = sb.from(table).select('*').order('user_id').order('id').limit(FETCH_PAGE);
+      if (after) {
+        var u = '"' + after.user_id + '"', i = '"' + String(after.id).replace(/["\\]/g, '\\$&') + '"';
+        q = q.or('user_id.gt.' + u + ',and(user_id.eq.' + u + ',id.gt.' + i + ')');
+      }
+      return q.then(check).then(function (res) {
+        var got = res.data || [];
+        rows = rows.concat(got);
+        return got.length < FETCH_PAGE ? rows : page(got[got.length - 1]);
+      });
+    }
+    return page(null);
+  }
+
   function fetchAll() {
     return Promise.all(SYNC.map(function (s) {
-      return sb.from(s.table).select('*').then(check).then(function (res) { return { s: s, rows: res.data || [] }; });
+      return fetchTable(s.table).then(function (rows) { return { s: s, rows: rows }; });
     })).then(function (parts) {
       var d = emptyData(), map = {};
       parts.forEach(function (p) {
@@ -419,8 +442,10 @@
 
   function loadUserData() {
     showScreen('loading');
+    fullLoadUser = null;
     var cached = readJson(cacheKey());
     return fetchAll().then(function (res) {
+      fullLoadUser = auth.user.id;
       var server = res.data;
       var prefs = readJson('tanjuric.prefs.' + auth.user.id) || {};
       var isEmpty = !server.children.length;
@@ -478,6 +503,7 @@
       var prevKids = data.children.slice();
       data = mergeServer(res, synced);
       synced = res.synced;
+      fullLoadUser = user.id;
       writeJson(cacheKey(), { dirty: sync.state !== 'ok', data: data, synced: synced });
       if (JSON.stringify(data) === before) return true;
       var lost = prevKids.filter(function (c) { return !c.demo && !childById(c.id); });
@@ -653,13 +679,33 @@
     });
     return groups;
   }
+  // Popis prikazuje samo najnovije dane s upisima; ostatak se otvara gumbom „Prikaži starije”.
+  // Broj prikazanih dana vraća se na početni kad se promijeni kartica, dijete ili filtar.
+  var DAYS_FIRST = 14, DAYS_MORE = 30;
+  function shownDays(groups) {
+    var child = activeChild();
+    var key = [ui.tab, child ? child.id : '', ui.q.trim(), ui.fType, ui.fAllergen, ui.fRange, ui.fReaction, ui.hideAp].join('|');
+    if (ui.daysKey !== key) { ui.daysKey = key; ui.daysShown = DAYS_FIRST; }
+    return groups.slice(0, ui.daysShown);
+  }
+  function moreHtml(groups, shown, countOf) {
+    var rest = groups.slice(shown.length);
+    if (!rest.length) return '';
+    var n = 0;
+    rest.forEach(function (g) { n += countOf(g); });
+    var next = Math.min(DAYS_MORE, rest.length);
+    return '<div class="list-more"><button type="button" class="btn" data-action="show-more" data-fk="show-more">Prikaži starije' +
+      '<span class="sr-only"> upise</span></button><span class="muted">Još ' + rest.length + ' ' + plural(rest.length, 'dan', 'dana', 'dana') +
+      ' · ' + n + ' ' + plural(n, 'upis', 'upisa', 'upisa') + (next < rest.length ? ' (sljedećih ' + next + ' dana)' : '') + '</span></div>';
+  }
   function daysHtml(list, itemHtml, forms) {
-    return groupByDay(list).map(function (g) {
+    var groups = groupByDay(list), shown = shownDays(groups);
+    return shown.map(function (g) {
       var l = dayLabel(g.date);
       return '<section class="day"><div class="day-head"><h2>' + esc(l.rel) + '</h2><span class="muted" style="font-size:14px">' + esc(l.full) + '</span>' +
         '<span class="n">' + g.items.length + ' ' + plural(g.items.length, forms[0], forms[1], forms[2]) + '</span></div>' +
         g.items.map(itemHtml).join('') + '</section>';
-    }).join('<div style="height:10px"></div>');
+    }).join('<div style="height:10px"></div>') + moreHtml(groups, shown, function (g) { return g.items.length; });
   }
   function emptyHtml(title, text) {
     return '<div class="empty">' + ICON.search + '<strong>' + esc(title) + '</strong><span>' + esc(text) + '</span></div>';
@@ -841,9 +887,11 @@
       return;
     }
     var KIND_NAME = { meal: 'Obrok', react: 'Reakcija', dose: 'Terapija', temp: 'Temperatura' };
-    host.innerHTML = plan + groupByDay(items).map(function (g) {
+    var groups = groupByDay(items), shown = shownDays(groups);
+    function realCount(g) { return g.items.filter(function (x) { return x.kind !== 'react'; }).length; }
+    host.innerHTML = plan + shown.map(function (g) {
       var l = dayLabel(g.date);
-      var n = g.items.filter(function (x) { return x.kind !== 'react'; }).length;
+      var n = realCount(g);
       var rows = g.items.map(function (x, i) {
         var card = x.kind === 'meal' ? entryHtml(x.item, known) : x.kind === 'dose' ? doseHtml(x.item)
           : x.kind === 'temp' ? tempHtml(x.item) : reactHtml(x.item, x.time);
@@ -856,7 +904,7 @@
       }).join('');
       return '<section class="day"><div class="day-head"><h2>' + esc(l.rel) + '</h2><span class="muted" style="font-size:14px">' + esc(l.full) + '</span>' +
         '<span class="n">' + n + ' ' + plural(n, 'upis', 'upisa', 'upisa') + '</span></div><div class="tl">' + rows + '</div></section>';
-    }).join('<div style="height:10px"></div>');
+    }).join('<div style="height:10px"></div>') + moreHtml(groups, shown, realCount);
   }
 
   // ---------- svakodnevne terapije: plan, potvrde i pomaci ----------
@@ -2053,13 +2101,15 @@
 
   // Datoteke u spremniku koje nijedan obrok više ne koristi (obrisan obrok ili dijete, zamijenjena slika)
   // brišu se nakon sat vremena, da se ne dira slika s drugog uređaja koja još čeka sinkronizaciju.
+  // Briše se samo kad su obroci u ovoj sesiji cijeli učitani s poslužitelja (fullLoadUser):
+  // stara ili nepotpuna kopija s uređaja ne smije zaključiti da fotografiju nitko ne koristi.
   var photoCleanT = null;
   function schedulePhotoCleanup(delay) {
     clearTimeout(photoCleanT);
     photoCleanT = setTimeout(cleanupPhotos, delay == null ? 5000 : delay);
   }
   function cleanupPhotos() {
-    if (!sb || !auth.user) return;
+    if (!sb || !auth.user || fullLoadUser !== auth.user.id) return;
     var used = {};
     data.entries.forEach(function (x) { if (x.photo && !isInlinePhoto(x.photo)) { used[x.photo] = true; used[thumbPath(x.photo)] = true; } });
     if (ui.form && ui.form.photo) { used[ui.form.photo] = true; used[thumbPath(ui.form.photo)] = true; }
@@ -2397,6 +2447,15 @@
         }
         showError(''); updateApInfo();
         if (v === '__new') $('#fApName').focus(); else if (v) $('#fApDose').focus();
+        break;
+      }
+      case 'show-more': {
+        var before = ui.daysShown;
+        ui.daysShown += DAYS_MORE;
+        renderList();
+        // fokus na prvi novootvoreni dan, da čitač ekrana i tipkovnica nastave odande
+        var sec = $('#list').querySelectorAll('section.day')[before], h = sec && sec.querySelector('h2');
+        if (h) { h.setAttribute('tabindex', '-1'); h.focus(); }
         break;
       }
       case 'toggle-ap':
