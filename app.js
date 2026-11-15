@@ -37,6 +37,8 @@
     trash: '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="M6 7l1 13h10l1-13"/></svg>',
     clock: '<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
     gallery: '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg>',
+    thermo: '<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M14 14.8V5a2 2 0 1 0-4 0v9.8a4 4 0 1 0 4 0z"/><path d="M12 9v7"/></svg>',
+    pill: '<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7z"/><path d="m8.5 8.5 7 7"/></svg>',
     camera: '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>',
     check: '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg>',
     people: '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3 19c.6-3.2 3-5 6-5s5.4 1.8 6 5"/><circle cx="17" cy="9" r="2.4"/><path d="M16.5 14.2c2.4.2 4 1.7 4.5 4.3"/></svg>',
@@ -223,20 +225,20 @@
     { key: 'meds', table: 'meds',
       to: function (m) {
         return { id: m.id, child_id: m.childId, name: m.name, unit: m.unit, dose: nz(m.dose), interval_h: nz(m.interval), note: m.note || '',
-          times: m.times || [], since: m.since || null, until: m.until || null };
+          times: m.times || [], since: m.since || null, until: m.until || null, antipyretic: !!m.antipyretic };
       },
       from: function (r) {
         return { id: r.id, childId: r.child_id, name: r.name, unit: r.unit, dose: zs(r.dose), interval: zs(r.interval_h), note: r.note,
-          times: r.times || [], since: r.since || '', until: r.until || '' };
+          times: r.times || [], since: r.since || '', until: r.until || '', antipyretic: !!r.antipyretic };
       } },
     { key: 'doses', table: 'doses',
       to: function (d) {
         return { id: d.id, child_id: d.childId, med_id: d.medId || null, med_name: d.medName, unit: d.unit || '', date: d.date, time: d.time, dose: Number(d.dose), note: d.note || '',
-          slot_date: d.slot ? d.slotDate : null, slot: d.slot || null };
+          slot_date: d.slot ? d.slotDate : null, slot: d.slot || null, antipyretic: !!d.antipyretic, temp_id: d.tempId || null };
       },
       from: function (r) {
         return { id: r.id, childId: r.child_id, medId: r.med_id, medName: r.med_name, unit: r.unit, date: r.date, time: r.time, dose: Number(r.dose), note: r.note,
-          slotDate: r.slot_date || '', slot: r.slot || '' };
+          slotDate: r.slot_date || '', slot: r.slot || '', antipyretic: !!r.antipyretic, tempId: r.temp_id || '' };
       } },
     { key: 'slots', table: 'med_slots',
       to: function (s) { return { id: s.id, child_id: s.childId, med_id: s.medId, date: s.date, slot: s.slot, time: s.time || null, skipped: !!s.skipped }; },
@@ -609,6 +611,7 @@
   };
   try {
     var savedTab = localStorage.getItem(TAB_KEY);
+    ui.hideAp = localStorage.getItem('tanjuric.hideAp') === '1';
     if (TABS.some(function (t) { return t.id === savedTab; })) ui.tab = savedTab;
   } catch (e) { /* ignore */ }
 
@@ -630,6 +633,11 @@
     return ofChild(data.meds, child).sort(function (a, b) { return a.name.localeCompare(b.name, 'hr'); });
   }
   function medById(id) { return data.meds.filter(function (m) { return m.id === id; })[0] || null; }
+  // Antipiretici: lijekovi za snižavanje temperature. Poznati nazivi označe se sami.
+  var AP_NAMES = /(neofen|nurofen|ibuprofen|brufen|ibuprom|dalsy|lupocet|paracetamol|panadol|plicet|efferalgan|calpol|perfalgan|daleron|febricet|paracet)/i;
+  function looksAntipyretic(name) { return AP_NAMES.test(String(name || '')); }
+  function isApDose(d) { var m = medById(d.medId); return m ? !!m.antipyretic : !!d.antipyretic; }
+  function childApMeds(child) { return childMeds(child).filter(function (m) { return m.antipyretic; }); }
   function doseMedName(d) { var m = medById(d.medId); return m ? m.name : d.medName; }
   function lastDoseOf(medId, beforeStamp, exceptId) {
     return data.doses.filter(function (d) {
@@ -1019,14 +1027,30 @@
     return '<article class="entry">' +
       '<div class="when"><span class="time">' + esc(d.time) + '</span><span class="type">' + (d.slot ? 'Plan ' + esc(d.slot) : 'Terapija') + '</span></div>' +
       '<div class="body"><div class="title-row"><h3>' + esc(title) + '</h3><span class="badge info">' + esc(doseText(d.dose, d.unit)) + '</span></div>' +
+      (isApDose(d) ? '<div class="tags"><span class="tag ap">' + ICON.thermo + 'Antipiretik' + apTempText(d) + '</span></div>' : '') +
       (d.note ? '<p class="note">' + esc(d.note) + '</p>' : '') +
       actionsHtml(d, 'dose', 'terapiju ' + title) + '</div></article>';
+  }
+  function apTempText(d) {
+    var t = d.tempId ? data.temps.filter(function (x) { return x.id === d.tempId; })[0] : null;
+    return t ? ' · uz ' + esc(fmtNum(t.value.toFixed(1))) + ' °C' : '';
   }
 
   function renderDoses() {
     var child = activeChild(), host = $('#list');
     if (!child) { host.innerHTML = ''; return; }
-    var list = ofChild(data.doses, child).sort(byNewest), plan = planHtml(child);
+    var all = ofChild(data.doses, child).sort(byNewest), plan = planHtml(child);
+    var apCount = all.filter(isApDose).length;
+    var list = ui.hideAp ? all.filter(function (d) { return !isApDose(d); }) : all;
+    var tools = apCount ? '<div class="list-tools"><button type="button" class="toggle ap-toggle" data-action="toggle-ap" data-fk="toggle-ap" aria-pressed="' + !!ui.hideAp + '">' +
+      ICON.thermo + 'Bez antipiretika</button><span class="muted">' + (ui.hideAp
+        ? 'Skriveno: ' + apCount + ' ' + plural(apCount, 'doza antipiretika', 'doze antipiretika', 'doza antipiretika')
+        : apCount + ' ' + plural(apCount, 'doza antipiretika', 'doze antipiretika', 'doza antipiretika') + ' u popisu') + '</span></div>' : '';
+    plan += tools;
+    if (all.length && !list.length) {
+      host.innerHTML = plan + emptyHtml('Nema terapija bez antipiretika', 'Sve upisane terapije su antipiretici. Isključi filtar „Bez antipiretika” da ih vidiš.');
+      return;
+    }
     if (!list.length) {
       host.innerHTML = plan + emptyHtml('Još nema zabilježenih terapija',
         childMeds(child).length ? 'Upiši prvu terapiju gumbom „Nova terapija”, ili lijeku u kartici „Lijekovi” dodaj vremena za svakodnevnu terapiju.' : 'Dodaj lijekove koje ' + child.name + ' koristi u kartici „Lijekovi”, ili odmah upiši terapiju gumbom „Nova terapija”.');
@@ -1040,6 +1064,9 @@
     return '<article class="entry">' +
       '<div class="when"><span class="time">' + esc(t.time) + '</span><span class="type">' + esc(t.method || 'Mjerenje') + '</span></div>' +
       '<div class="body"><div class="title-row"><h3 class="temp-val">' + esc(fmtNum(t.value.toFixed(1))) + ' °C</h3><span class="badge ' + lv.cls + '">' + lv.label + '</span></div>' +
+      data.doses.filter(function (d) { return d.tempId === t.id; }).map(function (d) {
+        return '<div class="tags"><span class="tag ap">' + ICON.pill + 'Dano: ' + esc(doseMedName(d)) + ' ' + esc(doseText(d.dose, d.unit)) + (d.time !== t.time ? ' u ' + esc(d.time) : '') + '</span></div>';
+      }).join('') +
       (t.note ? '<p class="note">' + esc(t.note) + '</p>' : '') +
       actionsHtml(t, 'temp', 'mjerenje ' + fmtNum(t.value.toFixed(1)) + ' °C') + '</div></article>';
   }
@@ -1146,6 +1173,7 @@
       '<div class="field"><label for="mUnit">Jedinica</label><select id="mUnit" class="input" data-mfield="unit">' + UNIT_KEYS.map(function (u) {
         return '<option value="' + esc(u) + '"' + (m.unit === u ? ' selected' : '') + '>' + esc(u) + '</option>';
       }).join('') + '</select></div></div>' +
+      '<label class="check"><input type="checkbox" id="mAp" data-mfield="antipyretic"' + (m.antipyretic ? ' checked' : '') + '>Antipiretik (lijek za snižavanje temperature)</label>' +
       '<fieldset class="med-sched"><legend>Svakodnevno u</legend>' +
       '<div class="chips">' + m.times.map(function (t) {
         return '<span class="time-chip">' + esc(t) + '<button type="button" class="chip-x" data-action="med-time-remove" data-val="' + esc(t) + '" aria-label="Ukloni ' + esc(t) + '">' + ICON.x + '</button></span>';
@@ -1183,7 +1211,7 @@
         ? '<span class="med-sched-line">' + ICON.clock + 'Svaki dan u ' + esc(m.times.join(', ')) +
           (m.until ? ' · do ' + esc(dayLabel(m.until).full) : '') + (m.until && m.until < toIso(new Date()) ? ' (završeno)' : '') + '</span>'
         : '';
-      return '<div class="med-item"><strong>' + esc(m.name) + '</strong>' + (sub ? '<span class="muted">' + esc(sub) + '</span>' : '') + sched +
+      return '<div class="med-item"><strong>' + esc(m.name) + (m.antipyretic ? ' <span class="tag ap">' + ICON.thermo + 'Antipiretik</span>' : '') + '</strong>' + (sub ? '<span class="muted">' + esc(sub) + '</span>' : '') + sched +
         (m.note ? '<span class="muted" style="font-style:italic">' + esc(m.note) + '</span>' : '') + actions + '</div>';
     }).join('');
     var adding = ui.medForm && !ui.medEditingId;
@@ -1571,9 +1599,50 @@
       '<fieldset><legend>Način mjerenja</legend><div class="chips">' + TEMP_METHODS.map(function (m) {
         return '<button type="button" class="chip sq" data-action="f-method" data-val="' + esc(m) + '" aria-pressed="' + (f.method === m) + '">' + esc(m) + '</button>';
       }).join('') + '</div></fieldset>' +
+      (ui.editingId ? '' : apBoxHtml()) +
       '<div class="field"><label for="fNote">Bilješka</label><textarea id="fNote" class="input" rows="2" data-field="note" maxlength="1000" placeholder="Kako se dijete osjeća, drugi simptomi…">' + esc(f.note) + '</textarea></div>',
       ui.editingId ? 'Spremi promjene' : 'Spremi mjerenje');
     updateTempBadge();
+    updateApInfo();
+  }
+
+  // Dio obrasca za novo mjerenje: je li dan lijek za snižavanje temperature.
+  function apBoxHtml() {
+    var f = ui.form, meds = childApMeds(activeChild()), sel = f.apMedId || '';
+    return '<fieldset class="ap-box"><legend>' + ICON.thermo + 'Je li dan lijek za temperaturu?</legend><div class="chips">' +
+      '<button type="button" class="chip sq" data-action="f-ap" data-val="" aria-pressed="' + (sel === '') + '">Nije dan</button>' +
+      meds.map(function (m) {
+        return '<button type="button" class="chip sq" data-action="f-ap" data-val="' + esc(m.id) + '" aria-pressed="' + (sel === m.id) + '">' + esc(m.name) + '</button>';
+      }).join('') +
+      '<button type="button" class="chip sq dashed-chip" data-action="f-ap" data-val="__new" aria-pressed="' + (sel === '__new') + '">' + ICON.plus + 'Novi antipiretik</button></div>' +
+      '<div id="fApNew" class="new-med"' + (sel === '__new' ? '' : ' hidden') + '><div class="grid2">' +
+      '<div class="field"><label for="fApName">Naziv lijeka</label><input id="fApName" class="input" type="text" maxlength="80" data-field="apNewName" value="' + esc(f.apNewName || '') + '" placeholder="npr. Neofen sirup, Lupocet" autocomplete="off"></div>' +
+      '<div class="field"><label for="fApUnit">Jedinica</label><select id="fApUnit" class="input" data-field="apNewUnit">' + UNIT_KEYS.map(function (u) {
+        return '<option value="' + esc(u) + '"' + ((f.apNewUnit || 'ml') === u ? ' selected' : '') + '>' + esc(u) + '</option>';
+      }).join('') + '</select></div></div>' +
+      '<span class="hint">Lijek se sprema u popis lijekova s oznakom „antipiretik”.</span></div>' +
+      '<div id="fApDoseRow" class="field"' + (sel ? '' : ' hidden') + '><label for="fApDose">Doza</label><div class="input-unit">' +
+      '<input id="fApDose" class="input" type="text" inputmode="decimal" data-field="apDose" value="' + esc(f.apDose || '') + '" placeholder="npr. 5"><span id="fApUnitLbl"></span></div></div>' +
+      '<div id="fApInfo"></div>' +
+      '<span class="hint">Doza se upisuje i u Terapije, s datumom i vremenom ovog mjerenja.</span></fieldset>';
+  }
+  function apUnit() {
+    var f = ui.form; if (!f) return '';
+    if (f.apMedId === '__new') return f.apNewUnit || 'ml';
+    var m = medById(f.apMedId); return m ? m.unit : '';
+  }
+  function updateApInfo() {
+    var el = $('#fApInfo'), f = ui.form; if (!el || !f) return;
+    var u = $('#fApUnitLbl'); if (u) u.textContent = unitLabel(apUnit(), parseNum(f.apDose));
+    var m = medById(f.apMedId);
+    if (!m || !f.date || !f.time) { el.innerHTML = ''; return; }
+    var at = stamp(f.date, f.time), last = lastDoseOf(m.id, at, null);
+    if (!last) { el.innerHTML = ''; return; }
+    var gap = at - stamp(last.date, last.time);
+    var info = 'Prethodna doza: ' + whenText(last.date, last.time) + ' (' + doseText(last.dose, last.unit) + '), ' + (gap < 60000 ? 'u isto vrijeme' : durText(gap) + ' ranije') + '.';
+    el.innerHTML = m.interval && gap < m.interval * 3600000
+      ? '<div class="alert-warn" role="alert">' + esc(info) + ' Upisani najmanji razmak za ovaj lijek je ' + esc(fmtNum(m.interval)) + ' h.</div>'
+      : '<p class="muted" style="font-size:14px">' + esc(info) + '</p>';
   }
 
   function updateTempBadge() {
@@ -1736,7 +1805,7 @@
       var lastT = ofChild(data.temps, activeChild()).sort(byNewest)[0];
       ui.form = entry
         ? { date: entry.date, time: entry.time, value: fmtNum(entry.value), method: entry.method || '', note: entry.note || '' }
-        : { date: n.date, time: n.time, value: '', method: lastT ? lastT.method : 'Pazuh', note: '' };
+        : { date: n.date, time: n.time, value: '', method: lastT ? lastT.method : 'Pazuh', note: '', apMedId: '', apDose: '', apNewName: '', apNewUnit: 'ml' };
     } else if (entry) {
       ui.editingId = entry.id;
       ui.form = {
@@ -1788,7 +1857,7 @@
       var name = String(f.newMedName || '').trim();
       if (!name) { showError('Upiši naziv lijeka ili odaberi lijek iz popisa.'); $('#fNewMedName').focus(); return; }
       med = childMeds(child).filter(function (m) { return norm(m.name) === norm(name); })[0] || null;
-      if (!med) med = newMed = { id: uid(), childId: existing ? existing.childId : child.id, name: name, unit: f.newMedUnit || 'ml', dose: '', interval: '', note: '' };
+      if (!med) med = newMed = { id: uid(), childId: existing ? existing.childId : child.id, name: name, unit: f.newMedUnit || 'ml', dose: '', interval: '', note: '', times: [], since: '', until: '', antipyretic: looksAntipyretic(name) };
     } else {
       med = medById(f.medId);
       if (!med) { showError('Odaberi lijek.'); return; }
@@ -1804,7 +1873,8 @@
       medId: med.id, medName: med.name, unit: med.unit,
       date: f.date, time: f.time, dose: dose,
       note: String(f.note || '').trim(),
-      slotDate: keepSlot ? existing.slotDate : '', slot: keepSlot ? existing.slot : ''
+      slotDate: keepSlot ? existing.slotDate : '', slot: keepSlot ? existing.slot : '',
+      antipyretic: !!med.antipyretic, tempId: existing && existing.medId === med.id ? existing.tempId || '' : ''
     };
     var prevD = data.doses, prevM = data.meds;
     if (newMed) data.meds = prevM.concat([newMed]);
@@ -1830,10 +1900,30 @@
       date: f.date, time: f.time, value: Math.round(v * 10) / 10,
       method: f.method || '', note: String(f.note || '').trim()
     };
-    var prev = data.temps;
+    // Antipiretik dan uz novo mjerenje: doza u Terapije (i novi lijek u popis, ako treba).
+    var apMed = null, apNewMed = null, apDose = null;
+    if (!existing && f.apMedId) {
+      if (f.apMedId === '__new') {
+        var apName = String(f.apNewName || '').trim();
+        if (!apName) { showError('Upiši naziv lijeka za temperaturu ili odaberi „Nije dan”.'); $('#fApName').focus(); return; }
+        apMed = childMeds(child).filter(function (m) { return norm(m.name) === norm(apName); })[0] || null;
+        if (!apMed) apMed = apNewMed = { id: uid(), childId: child.id, name: apName, unit: f.apNewUnit || 'ml', dose: '', interval: '', note: '', times: [], since: '', until: '', antipyretic: true };
+      } else {
+        apMed = medById(f.apMedId);
+      }
+      var apAmount = parseNum(f.apDose);
+      if (!apMed) { showError('Odaberi lijek za temperaturu.'); return; }
+      if (isNaN(apAmount) || apAmount <= 0) { showError('Upiši dozu lijeka kao broj, npr. 5 ili 2,5.'); $('#fApDose').focus(); return; }
+      if (apNewMed) apNewMed.dose = apAmount;
+      apDose = { id: uid(), childId: child.id, medId: apMed.id, medName: apMed.name, unit: apMed.unit, date: f.date, time: f.time,
+        dose: apAmount, note: '', slotDate: '', slot: '', antipyretic: true, tempId: entry.id };
+    }
+    var prev = data.temps, prevD = data.doses, prevM = data.meds;
     data.temps = existing ? prev.map(function (x) { return x.id === entry.id ? entry : x; }) : [entry].concat(prev);
+    if (apNewMed) data.meds = prevM.concat([apNewMed]);
+    if (apDose) data.doses = [apDose].concat(prevD);
     if (!persist()) {
-      data.temps = prev;
+      data.temps = prev; data.doses = prevD; data.meds = prevM;
       showError('Spremanje nije uspjelo — preglednik ne dopušta spremanje podataka.');
       return;
     }
@@ -2061,7 +2151,7 @@
     if (x.from > x.to) x.from = x.to;
   }
   function newExport(kind, child) {
-    var x = { kind: kind, what: ui.tab, preset: '30', from: '', to: '', reactOnly: false, allergen: '', medId: '', feverOnly: false,
+    var x = { kind: kind, what: ui.tab, preset: '30', from: '', to: '', reactOnly: false, allergen: '', medId: '', feverOnly: false, noAp: !!ui.hideAp,
       incMeals: true, incDoses: true, incTemps: true };
     setPreset(x, '30', child);
     return x;
@@ -2079,6 +2169,7 @@
       if (w === 'meals' && x.allergen) out.filters.push('alergen: ' + x.allergen);
     }
     if (w === 'doses' && x.medId) out.filters.push('lijek: ' + ((medById(x.medId) || {}).name || ''));
+    if ((w === 'doses' || (w === 'all' && x.incDoses)) && x.noAp) out.filters.push('terapije bez antipiretika');
     if (w === 'temps' && x.feverOnly) out.filters.push('samo od 37,5 °C');
     if (w === 'all') {
       var skip = [x.incMeals ? '' : 'obroke', x.incDoses ? '' : 'terapije', x.incTemps ? '' : 'temperaturu'].filter(Boolean);
@@ -2088,7 +2179,7 @@
       var items = timelineItems(child).filter(function (it) {
         if (!inRange(it.date)) return false;
         if (it.kind === 'meal' || it.kind === 'react') return x.incMeals && mealOk(it.item);
-        if (it.kind === 'dose') return x.incDoses;
+        if (it.kind === 'dose') return x.incDoses && !(x.noAp && isApDose(it.item));
         return x.incTemps;
       }).reverse();
       out.rows = items.map(function (it) {
@@ -2097,7 +2188,7 @@
           [e.allergens.length ? 'Alergeni: ' + e.allergens.join(', ') : '', e.reaction ? 'Reakcija: ' + e.severity : 'Bez reakcije'].filter(Boolean).join('; '), e.note];
         if (it.kind === 'react') return [csvDate(it.date), it.time, 'Reakcija', e.symptoms.join(', ') || 'Reakcija',
           (e.severity ? e.severity + '; ' : '') + e.onset + ' min nakon obroka: ' + e.food, ''];
-        if (it.kind === 'dose') return [csvDate(it.date), it.time, 'Terapija', doseMedName(e), doseText(e.dose, e.unit), e.note];
+        if (it.kind === 'dose') return [csvDate(it.date), it.time, isApDose(e) ? 'Terapija · antipiretik' : 'Terapija', doseMedName(e), doseText(e.dose, e.unit), e.note];
         return [csvDate(it.date), it.time, 'Temperatura', fmtNum(e.value.toFixed(1)) + ' °C', e.method, e.note];
       });
       var nm = items.filter(function (i) { return i.kind === 'meal'; }).length;
@@ -2110,9 +2201,9 @@
       out.count = items.filter(function (i) { return i.kind !== 'react'; }).length;
     } else if (w === 'doses') {
       out.kindName = 'terapije';
-      out.head = ['Datum', 'Vrijeme', 'Lijek', 'Doza', 'Jedinica', 'Po planu', 'Bilješka'];
-      var ds = ofChild(data.doses, child).filter(function (d) { return inRange(d.date) && (!x.medId || d.medId === x.medId); }).sort(asc);
-      out.rows = ds.map(function (d) { return [csvDate(d.date), d.time, doseMedName(d), fmtNum(d.dose), unitLabel(d.unit, d.dose), d.slot || '', d.note]; });
+      out.head = ['Datum', 'Vrijeme', 'Lijek', 'Doza', 'Jedinica', 'Antipiretik', 'Po planu', 'Bilješka'];
+      var ds = ofChild(data.doses, child).filter(function (d) { return inRange(d.date) && (!x.medId || d.medId === x.medId) && !(x.noAp && isApDose(d)); }).sort(asc);
+      out.rows = ds.map(function (d) { return [csvDate(d.date), d.time, doseMedName(d), fmtNum(d.dose), unitLabel(d.unit, d.dose), isApDose(d) ? 'Da' : '', d.slot || '', d.note]; });
       out.count = ds.length;
       out.summary = ds.length + ' ' + plural(ds.length, 'terapija', 'terapije', 'terapija');
     } else if (w === 'temps') {
@@ -2161,12 +2252,14 @@
         opt('', 'Svi obroci', x.allergen) + ALLERGENS.map(function (a) { return opt(a, a, x.allergen); }).join('') + '</select></div>';
     } else if (x.what === 'doses') {
       extra = '<div class="field"><label for="xMed">Lijek</label><select id="xMed" class="input" data-xfield="medId">' +
-        opt('', 'Svi lijekovi', x.medId) + childMeds(child).map(function (m) { return opt(m.id, m.name, x.medId); }).join('') + '</select></div>';
+        opt('', 'Svi lijekovi', x.medId) + childMeds(child).map(function (m) { return opt(m.id, m.name, x.medId); }).join('') + '</select></div>' +
+        check('noAp', 'Bez antipiretika (lijekova za temperaturu)', x.noAp);
     } else if (x.what === 'temps') {
       extra = check('feverOnly', 'Samo povišena temperatura (od 37,5 °C)', x.feverOnly);
     } else {
       extra = '<div class="check-row">' + check('incMeals', 'Obroci', x.incMeals) + check('incDoses', 'Terapije', x.incDoses) + check('incTemps', 'Temperatura', x.incTemps) + '</div>' +
-        (x.incMeals ? check('reactOnly', 'Od obroka samo oni s reakcijom', x.reactOnly) : '');
+        (x.incMeals ? check('reactOnly', 'Od obroka samo oni s reakcijom', x.reactOnly) : '') +
+        (x.incDoses ? check('noAp', 'Terapije bez antipiretika', x.noAp) : '');
     }
     var count = res ? res.count : 0;
     box.innerHTML = '<div class="export-panel" role="group" aria-labelledby="expTitle">' +
@@ -2293,18 +2386,38 @@
         if (v === '__new') $('#fNewMedName').focus();
         break;
       }
+      case 'f-ap': {
+        var prevAp = medById(f.apMedId), nextAp = medById(v);
+        var prevApDefault = prevAp && prevAp.dose !== '' && prevAp.dose != null ? fmtNum(prevAp.dose) : '';
+        f.apMedId = v;
+        b.parentNode.querySelectorAll('[data-action="f-ap"]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+        $('#fApNew').hidden = v !== '__new';
+        $('#fApDoseRow').hidden = !v;
+        if (nextAp && nextAp.dose !== '' && nextAp.dose != null && (!f.apDose || f.apDose === prevApDefault)) {
+          f.apDose = fmtNum(nextAp.dose); $('#fApDose').value = f.apDose;
+        }
+        showError(''); updateApInfo();
+        if (v === '__new') $('#fApName').focus(); else if (v) $('#fApDose').focus();
+        break;
+      }
+      case 'toggle-ap':
+        ui.hideAp = !ui.hideAp;
+        try { localStorage.setItem('tanjuric.hideAp', ui.hideAp ? '1' : ''); } catch (e) { /* ignore */ }
+        renderList();
+        var ta2 = document.querySelector('[data-fk="toggle-ap"]'); if (ta2) ta2.focus();
+        break;
       case 'f-method':
         f.method = f.method === v ? '' : v;
         b.parentNode.querySelectorAll('[data-action="f-method"]').forEach(function (x) { x.setAttribute('aria-pressed', String(x.getAttribute('data-val') === f.method)); });
         break;
       case 'med-new':
-        ui.medForm = { name: '', unit: 'ml', dose: '', interval: '', note: '', times: [], since: '', until: '' }; ui.medEditingId = null; ui.confirmMedDeleteId = null;
+        ui.medForm = { name: '', unit: 'ml', dose: '', interval: '', note: '', times: [], since: '', until: '', antipyretic: false }; ui.medEditingId = null; ui.confirmMedDeleteId = null;
         renderAside(); $('#mName').focus(); break;
       case 'med-edit': {
         var em = medById(id); if (!em) break;
         ui.medEditingId = id; ui.confirmMedDeleteId = null;
         ui.medForm = { name: em.name, unit: em.unit, dose: em.dose === '' || em.dose == null ? '' : fmtNum(em.dose), interval: em.interval ? fmtNum(em.interval) : '', note: em.note || '',
-          times: (em.times || []).slice(), since: em.since || '', until: em.until || '' };
+          times: (em.times || []).slice(), since: em.since || '', until: em.until || '', antipyretic: !!em.antipyretic, apTouched: true };
         renderAside(); $('#mName').focus(); break;
       }
       case 'med-cancel':
@@ -2497,10 +2610,16 @@
       if (t.id === 'fFood') updateAc();
       if (ui.formKind === 'dose' && (field === 'date' || field === 'time' || field === 'newMedUnit' || field === 'dose')) updateDoseInfo();
       if (ui.formKind === 'temp' && field === 'value') updateTempBadge();
+      if (ui.formKind === 'temp' && (field === 'date' || field === 'time' || field === 'apDose' || field === 'apNewUnit')) updateApInfo();
       return;
     }
     var mfield = t.getAttribute('data-mfield');
-    if (mfield && ui.medForm) { ui.medForm[mfield] = t.value; var me = $('#mError'); if (me) me.hidden = true; }
+    if (mfield && ui.medForm) {
+      ui.medForm[mfield] = t.type === 'checkbox' ? t.checked : t.value;
+      if (mfield === 'antipyretic') ui.medForm.apTouched = true;
+      if (mfield === 'name' && !ui.medForm.apTouched && $('#mAp')) { ui.medForm.antipyretic = looksAntipyretic(t.value); $('#mAp').checked = ui.medForm.antipyretic; }
+      var me = $('#mError'); if (me) me.hidden = true;
+    }
   });
 
   function saveMed() {
@@ -2530,7 +2649,7 @@
       id: existing ? existing.id : uid(),
       childId: existing ? existing.childId : child.id,
       name: name, unit: m.unit || 'ml', dose: dose, interval: interval, note: String(m.note || '').trim(),
-      times: times, since: since, until: until
+      times: times, since: since, until: until, antipyretic: !!m.antipyretic
     };
     var prev = data.meds;
     data.meds = existing ? prev.map(function (x) { return x.id === med.id ? med : x; }) : prev.concat([med]);
