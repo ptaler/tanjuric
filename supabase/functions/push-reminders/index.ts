@@ -58,23 +58,28 @@ function doseText(dose: number | null | undefined, unit: string | undefined, lan
   return num(n, lang) + ' ' + label;
 }
 
+// Chrome na Androidu lokalnim modelom provjerava naslov i tekst obavijesti i sumnjive prikazuje
+// kao „moguća neželjena poruka”, a stranici s ponovljenim upozorenjima oduzme dopuštenje.
+// Zato tekst samo opisuje činjenicu (dijete, lijek, vrijeme, doza), bez poziva na radnju
+// („potvrdi”, „klikni”), hitnosti i uskličnika.
 function texts(m: Msg): { title: string; body: string } {
   const en = m.lang === 'en';
   const dose = doseText(m.dose, m.unit, m.lang);
+  const title = `${m.child}: ${m.med}`;
   if (m.kind === 'daily') {
-    return en
-      ? { title: `${m.med} at ${m.time}`, body: `Time for ${m.child}’s dose${dose ? ` (${dose})` : ''}. Confirm it in Tanjurić once it’s given.` }
-      : { title: `${m.med} u ${m.time}`, body: `Vrijeme je za terapiju — ${m.child}${dose ? `, ${dose}` : ''}. Kad je dano, potvrdi u Tanjuriću.` };
+    return { title, body: (en ? `Daily medication, ${m.time}` : `Svakodnevna terapija, ${m.time}`) + (dose ? ` · ${dose}` : '') };
   }
   if (m.kind === 'gap') {
     const h = m.hours ? num(Number(m.hours), m.lang) + ' h' : '';
-    return en
-      ? { title: `${m.med}: the gap has passed`, body: h ? `${h} have passed since ${m.child}’s dose at ${m.time}.` : `The minimum gap since ${m.child}’s dose at ${m.time} has passed.` }
-      : { title: `${m.med}: prošao je razmak`, body: h ? `Od doze u ${m.time} prošlo je ${h} (${m.child}).` : `Prošao je upisani razmak od doze u ${m.time} (${m.child}).` };
+    return {
+      title,
+      body: en
+        ? (h ? `${h} since the dose at ${m.time}` : `Minimum gap since the dose at ${m.time} has passed`)
+        : (h ? `Prošlo je ${h} od doze u ${m.time}` : `Prošao je upisani razmak od doze u ${m.time}`)
+    };
   }
-  return en
-    ? { title: `${m.med} — ${m.child}`, body: `Given at ${m.time}${dose ? ` · ${dose}` : ''}. Added by ${m.who}.` }
-    : { title: `${m.med} — ${m.child}`, body: `Dano u ${m.time}${dose ? ` · ${dose}` : ''}. Upis: ${m.who}.` };
+  return { title, body: (en ? `Given at ${m.time}` : `Dano u ${m.time}`) + (dose ? ` · ${dose}` : '') +
+    (m.who ? (en ? ` · added by ${m.who}` : ` · upis: ${m.who}`) : '') };
 }
 
 // ---------- slanje ----------
