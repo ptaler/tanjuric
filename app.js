@@ -50,6 +50,7 @@
     camera: '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>',
     check: '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg>',
     people: '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3 19c.6-3.2 3-5 6-5s5.4 1.8 6 5"/><circle cx="17" cy="9" r="2.4"/><path d="M16.5 14.2c2.4.2 4 1.7 4.5 4.3"/></svg>',
+    bell: '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 0 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9z"/><path d="M10 20a2.2 2.2 0 0 0 4 0"/></svg>',
     link: '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>',
     search: '<svg aria-hidden="true" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#A9B4B1" stroke-width="1.6" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>'
   };
@@ -242,11 +243,11 @@
     { key: 'doses', table: 'doses',
       to: function (d) {
         return { id: d.id, child_id: d.childId, med_id: d.medId || null, med_name: d.medName, unit: d.unit || '', date: d.date, time: d.time, dose: Number(d.dose), note: d.note || '',
-          slot_date: d.slot ? d.slotDate : null, slot: d.slot || null, antipyretic: !!d.antipyretic, temp_id: d.tempId || null };
+          slot_date: d.slot ? d.slotDate : null, slot: d.slot || null, antipyretic: !!d.antipyretic, temp_id: d.tempId || null, remind_at: d.remindAt || null };
       },
       from: function (r) {
         return { id: r.id, childId: r.child_id, medId: r.med_id, medName: r.med_name, unit: r.unit, date: r.date, time: r.time, dose: Number(r.dose), note: r.note,
-          slotDate: r.slot_date || '', slot: r.slot || '', antipyretic: !!r.antipyretic, tempId: r.temp_id || '' };
+          slotDate: r.slot_date || '', slot: r.slot || '', antipyretic: !!r.antipyretic, tempId: r.temp_id || '', remindAt: r.remind_at || '' };
       } },
     { key: 'slots', table: 'med_slots',
       to: function (s) { return { id: s.id, child_id: s.childId, med_id: s.medId, date: s.date, slot: s.slot, time: s.time || null, skipped: !!s.skipped }; },
@@ -478,6 +479,8 @@
       schedulePhotoCleanup(15000);
       loadShares();
       checkPendingInvite();
+      loadPushState();
+      applyOpenRequest();
     }).catch(function (err) {
       console.error(err);
       if (cached && normalize(cached.data)) {
@@ -561,6 +564,200 @@
   })();
   function pendingInvite() { try { return localStorage.getItem(INVITE_KEY) || ''; } catch (e) { return ''; } }
   function clearInvite() { try { localStorage.removeItem(INVITE_KEY); } catch (e) { /* ignore */ } ui.invite = null; }
+
+  // ---------- podsjetnici (Web Push) ----------
+  // Uređaj se pretplati na obavijesti (push_subscribe); šalje ih Edge Function push-reminders,
+  // koju pg_cron poziva svake minute (supabase/migrations/20261117120000_push_reminders.sql).
+  // push.prefs: null = podsjetnici na ovom uređaju isključeni, inače { daily, partner }.
+  var push = { reg: null, sub: null, prefs: null, busy: false, err: '' };
+
+  function pushSupported() {
+    return !!(sb && window.isSecureContext && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window);
+  }
+  function isIos() { return /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); }
+  function isStandalone() { return navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches); }
+  function pushOn() { return !!(push.sub && push.prefs); }
+
+  function swReady() {
+    if (push.reg) return Promise.resolve(push.reg);
+    if (!('serviceWorker' in navigator)) return Promise.resolve(null);
+    return navigator.serviceWorker.register('sw.js').then(function (r) { push.reg = r; return r; })
+      .catch(function (err) { console.error('Service worker nije registriran', err); return null; });
+  }
+
+  function b64uBytes(s) {
+    var b = atob(String(s).replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4)), out = new Uint8Array(b.length);
+    for (var i = 0; i < b.length; i++) out[i] = b.charCodeAt(i);
+    return out;
+  }
+  function timeZone() { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { return ''; } }
+
+  function savePushSub(sub, prefs) {
+    var j = sub.toJSON();
+    return sb.rpc('push_subscribe', {
+      p_endpoint: j.endpoint, p_p256dh: j.keys.p256dh, p_auth: j.keys.auth, p_tz: timeZone(), p_lang: LANG,
+      p_daily: prefs.daily, p_partner: prefs.partner
+    }).then(check).then(function (res) { return res.data; });
+  }
+
+  // Stanje ovog uređaja: postoji li pretplata u pregledniku i pripada li prijavljenom korisniku.
+  function loadPushState() {
+    push.sub = null; push.prefs = null; push.err = '';
+    if (!pushSupported() || !auth.user) return Promise.resolve();
+    var user = auth.user;
+    return swReady().then(function (reg) {
+      return reg ? reg.pushManager.getSubscription() : null;
+    }).then(function (sub) {
+      if (!sub || auth.user !== user) return null;
+      return sb.from('push_subscriptions').select('daily, partner, tz, lang').eq('endpoint', sub.endpoint).then(check).then(function (res) {
+        var row = res.data && res.data[0];
+        if (auth.user !== user || !row) return;   // uređaj nema pretplatu za ovaj račun
+        push.sub = sub; push.prefs = { daily: row.daily, partner: row.partner };
+        // promijenjen jezik ili vremenska zona: osvježi da obavijesti stižu točno i na pravom jeziku
+        if (row.lang !== LANG || row.tz !== timeZone()) savePushSub(sub, push.prefs).catch(function () { /* sljedeći put */ });
+      });
+    }).catch(function (err) { console.error('Stanje podsjetnika nije dostupno', err); })
+      .then(function () { if (auth.user === user) { renderRemindCard(activeChild()); if (ui.form) updateFormReminder(); } });
+  }
+
+  function enablePush() {
+    if (push.busy) return;
+    push.busy = true; push.err = ''; renderRemindCard(activeChild());
+    var user = auth.user;
+    Notification.requestPermission().then(function (perm) {
+      if (perm !== 'granted') throw { quiet: true };
+      return Promise.all([swReady(), sb.rpc('push_public_key').then(check)]);
+    }).then(function (r) {
+      var reg = r[0], key = r[1].data;
+      if (!reg) throw new Error('no service worker');
+      if (!key) throw { msg: tx('Podsjetnici još nisu spremni na poslužitelju. Pokušaj ponovno za minutu.') };
+      var opts = { userVisibleOnly: true, applicationServerKey: b64uBytes(key) };
+      return reg.pushManager.subscribe(opts).catch(function () {
+        // stara pretplata s drugim ključem: makni je i pretplati se ponovno
+        return reg.pushManager.getSubscription().then(function (old) {
+          return (old ? old.unsubscribe() : Promise.resolve()).then(function () { return reg.pushManager.subscribe(opts); });
+        });
+      });
+    }).then(function (sub) {
+      var prefs = { daily: true, partner: true };
+      return savePushSub(sub, prefs).then(function () {
+        if (auth.user !== user) return;
+        push.sub = sub; push.prefs = prefs;
+        flash(tx('Podsjetnici su uključeni na ovom uređaju.'));
+      });
+    }).catch(function (err) {
+      if (!(err && err.quiet)) {
+        console.error('Uključivanje podsjetnika nije uspjelo', err);
+        push.err = (err && err.msg) || tx('Uključivanje podsjetnika nije uspjelo. Provjeri internetsku vezu i pokušaj ponovno.');
+      }
+    }).then(function () {
+      push.busy = false;
+      renderRemindCard(activeChild());
+      if (ui.form) updateFormReminder();
+      var back = $('[data-fk="push-off"]') || $('[data-fk="push-on"]'); if (back) back.focus({ preventScroll: true });
+    });
+  }
+
+  function setPushPref(name, on) {
+    if (!pushOn()) return;
+    var prev = push.prefs;
+    push.prefs = Object.assign({}, prev); push.prefs[name] = on;
+    savePushSub(push.sub, push.prefs).catch(function (err) {
+      console.error(err);
+      push.prefs = prev; push.err = tx('Spremanje nije uspjelo. Provjeri internetsku vezu i pokušaj ponovno.');
+      renderRemindCard(activeChild());
+    });
+  }
+
+  // Isključi podsjetnike na ovom uređaju (i pri odjavi, da obavijesti ne stižu na tuđi uređaj).
+  function disablePush() {
+    var sub = push.sub;
+    push.sub = null; push.prefs = null; push.err = '';
+    if (!sub) return Promise.resolve();
+    var del = sb && auth.user ? sb.from('push_subscriptions').delete().eq('endpoint', sub.endpoint).then(check) : Promise.resolve();
+    return Promise.all([del, sub.unsubscribe()]).catch(function (err) { console.error('Isključivanje podsjetnika', err); });
+  }
+
+  // Obavijest otvara aplikaciju s ?terapije=<child_id>: prikaži to dijete na kartici Terapije.
+  var openRequest = null;
+  (function captureOpen() {
+    try {
+      var params = new URLSearchParams(location.search), c = params.get('terapije');
+      if (c == null) return;
+      openRequest = c;
+      params.delete('terapije');
+      var qs = params.toString();
+      history.replaceState(null, '', location.pathname + (qs ? '?' + qs : '') + location.hash);
+    } catch (e) { /* ignore */ }
+  })();
+  function applyOpenRequest() {
+    var id = openRequest; openRequest = null;
+    if (id == null || !auth.user) return;
+    if (childById(id)) { data.activeChild = id; savePrefs(); }
+    if (ui.form || ui.picking) closeForm();
+    ui.tab = 'doses'; ui.occEdit = null; ui.medForm = null; ui.medEditingId = null;
+    try { localStorage.setItem(TAB_KEY, 'doses'); } catch (e) { /* ignore */ }
+    renderAll();
+    $('#main').scrollIntoView({ block: 'start' });
+  }
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('message', function (ev) {
+      if (!ev.data || ev.data.type !== 'open') return;
+      try { openRequest = new URL(ev.data.url).searchParams.get('terapije'); } catch (e) { return; }
+      applyOpenRequest();
+      refreshNow();   // obavijest drugog roditelja: dohvati njegov upis
+    });
+  }
+
+  // Kartica „Podsjetnici” na kartici Terapije.
+  function renderRemindCard(child) {
+    var el = $('#remindCard'); if (!el) return;
+    var show = !!(sb && auth.user && child && ui.tab === 'doses' && (childMeds(child).length || pushOn()));
+    el.hidden = !show;
+    if (!show) { el.innerHTML = ''; return; }
+    var html = '<h2>' + ICON.bell + tx('Podsjetnici') + '</h2>';
+    if (!pushSupported()) {
+      html += '<p class="share-lead">' + (isIos() && !isStandalone()
+        ? tx('Na iPhoneu podsjetnici rade kad Tanjurić dodaš na početni zaslon: u Safariju dodirni Dijeli, zatim „Dodaj na početni zaslon”, pa otvori Tanjurić odande.')
+        : tx('Ovaj preglednik ne podržava obavijesti.')) + '</p>';
+    } else if (!pushOn() && Notification.permission === 'denied') {
+      html += '<p class="share-lead">' + tx('Obavijesti za Tanjurić blokirane su u postavkama preglednika. Dopusti ih ondje, pa uključi podsjetnike.') + '</p>';
+    } else if (!pushOn()) {
+      html += '<p class="share-lead">' + tx('Obavijest na ovom uređaju kad je vrijeme za svakodnevnu terapiju, kad prođe razmak do sljedeće doze i kad drugi roditelj upiše lijek.') + '</p>' +
+        '<button type="button" class="btn" data-action="push-on" data-fk="push-on"' + (push.busy ? ' disabled' : '') + '>' + ICON.bell + tx('Uključi podsjetnike') + '</button>';
+    } else {
+      var shared = Object.keys(shares).length > 0;
+      html += '<div class="check-col"><label class="check"><input type="checkbox" data-push="daily"' + (push.prefs.daily ? ' checked' : '') + '>' + tx('Svakodnevne terapije u zadano vrijeme') + '</label>' +
+        (shared ? '<label class="check"><input type="checkbox" data-push="partner"' + (push.prefs.partner ? ' checked' : '') + '>' + tx('Kad netko drugi upiše dozu') + '</label>' : '') + '</div>' +
+        '<span class="hint">' + tx('Uz dozu lijeka s upisanim razmakom možeš zatražiti podsjetnik kad razmak prođe.') + '</span>' +
+        '<button type="button" class="btn-link grey" data-action="push-off" data-fk="push-off">' + tx('Isključi na ovom uređaju') + '</button>';
+    }
+    if (push.err) html += '<span class="alert-err" role="alert">' + esc(push.err) + '</span>';
+    el.innerHTML = html;
+  }
+
+  // Podsjetnik kad prođe razmak: trenutak (ms) ili 0 ako ga za taj lijek i vrijeme nema smisla nuditi.
+  function remindTarget(m, date, time) {
+    if (!pushOn() || !m || !m.interval || !date || !time) return 0;
+    var at = stamp(date, time) + Number(m.interval) * 3600000;
+    return at > Date.now() + 60000 ? at : 0;
+  }
+  function remindIso(ms) { return new Date(ms).toISOString().slice(0, 19) + '+00:00'; }   // oblik kao iz baze
+  function remindCheckHtml(field, on, at) {
+    var d = new Date(at), iso = toIso(d), hm = pad(d.getHours()) + ':' + pad(d.getMinutes());
+    var when = iso === isoOffset(0) ? atText(hm) : iso === isoOffset(1) ? tx('sutra u {time}', { time: hm }) : whenText(iso, hm);
+    return '<label class="check"><input type="checkbox" data-field="' + field + '"' + (on ? ' checked' : '') + '>' +
+      esc(tx('Podsjeti me kad prođe razmak ({when})', { when: when })) + '</label>';
+  }
+  // Početno stanje kvačice: kao kod zadnje doze tog lijeka (tko traži podsjetnik, traži ga svaki put).
+  function remindDefault(medId, beforeStamp, exceptId) {
+    var last = lastDoseOf(medId, beforeStamp, exceptId);
+    return !!(last && last.remindAt);
+  }
+  function updateFormReminder() {
+    if (ui.formKind === 'dose') updateDoseInfo();
+    else if (ui.formKind === 'temp') updateApInfo();
+  }
 
   function checkPendingInvite() {
     var token = pendingInvite();
@@ -1294,6 +1491,7 @@
     renderChildDelete(child);
     renderShareCard(child);
     renderMedCard(child);
+    renderRemindCard(child);
     var sh = child && shares[child.id];
     $('#dataNote').textContent = sh
       ? tx('Zapise za dijete {name} vide i mogu mijenjati svi s kojima je dijete podijeljeno. CSV je tvoja kopija za liječnika ili arhivu.', { name: child.name })
@@ -1646,14 +1844,19 @@
     if (!m || !f.date || !f.time) { el.innerHTML = ''; return; }
     var at = stamp(f.date, f.time);
     var last = lastDoseOf(m.id, at, ui.editingId);
-    if (!last) { el.innerHTML = '<p class="muted" style="font-size:14px">' + tx('Za ovaj lijek još nema ranije upisane doze.') + '</p>'; return; }
-    var gap = at - stamp(last.date, last.time);
-    var info = prevDoseText(last, gap);
-    if (m.interval && gap < m.interval * 3600000) {
-      el.innerHTML = '<div class="alert-warn" role="alert">' + esc(info + ' ' + minGapText(m)) + '</div>';
+    var target = remindTarget(m, f.date, f.time), html;
+    if (target && f.remind == null) f.remind = remindDefault(m.id, at, ui.editingId);
+    var remind = target ? remindCheckHtml('remind', f.remind, target) : '';
+    if (!last) {
+      html = '<p class="muted" style="font-size:14px">' + tx('Za ovaj lijek još nema ranije upisane doze.') + '</p>';
     } else {
-      el.innerHTML = '<p class="muted" style="font-size:14px">' + esc(info) + '</p>';
+      var gap = at - stamp(last.date, last.time);
+      var info = prevDoseText(last, gap);
+      html = m.interval && gap < m.interval * 3600000
+        ? '<div class="alert-warn" role="alert">' + esc(info + ' ' + minGapText(m)) + '</div>'
+        : '<p class="muted" style="font-size:14px">' + esc(info) + '</p>';
     }
+    el.innerHTML = html + remind;
   }
 
   function renderTempForm(host) {
@@ -1700,12 +1903,15 @@
     var m = medById(f.apMedId);
     if (!m || !f.date || !f.time) { el.innerHTML = ''; return; }
     var at = stamp(f.date, f.time), last = lastDoseOf(m.id, at, null);
-    if (!last) { el.innerHTML = ''; return; }
+    var target = remindTarget(m, f.date, f.time);
+    if (target && f.apRemind == null) f.apRemind = remindDefault(m.id, at, null);
+    var remind = target ? remindCheckHtml('apRemind', f.apRemind, target) : '';
+    if (!last) { el.innerHTML = remind; return; }
     var gap = at - stamp(last.date, last.time);
     var info = prevDoseText(last, gap);
-    el.innerHTML = m.interval && gap < m.interval * 3600000
+    el.innerHTML = (m.interval && gap < m.interval * 3600000
       ? '<div class="alert-warn" role="alert">' + esc(info + ' ' + minGapText(m)) + '</div>'
-      : '<p class="muted" style="font-size:14px">' + esc(info) + '</p>';
+      : '<p class="muted" style="font-size:14px">' + esc(info) + '</p>') + remind;
   }
 
   function updateTempBadge() {
@@ -1861,7 +2067,7 @@
       var meds = childMeds(activeChild());
       ui.editingId = entry ? entry.id : null;
       ui.form = entry
-        ? { date: entry.date, time: entry.time, medId: medById(entry.medId) ? entry.medId : '__new', newMedName: entry.medName, newMedUnit: entry.unit || 'ml', dose: fmtNum(entry.dose), note: entry.note || '' }
+        ? { date: entry.date, time: entry.time, medId: medById(entry.medId) ? entry.medId : '__new', newMedName: entry.medName, newMedUnit: entry.unit || 'ml', dose: fmtNum(entry.dose), note: entry.note || '', remind: !!entry.remindAt }
         : { date: n.date, time: n.time, medId: meds.length ? meds[0].id : '__new', newMedName: '', newMedUnit: 'ml', dose: '', note: '' };
       if (!entry && meds.length && meds[0].dose !== '' && meds[0].dose != null) ui.form.dose = fmtNum(meds[0].dose);
     } else if (kind === 'temp') {
@@ -1940,6 +2146,10 @@
       slotDate: keepSlot ? existing.slotDate : '', slot: keepSlot ? existing.slot : '',
       antipyretic: !!med.antipyretic, tempId: existing && existing.medId === med.id ? existing.tempId || '' : ''
     };
+    // Podsjetnik kad prođe razmak. Bez podsjetnika na ovom uređaju kvačice nema, pa podsjetnik
+    // koji je zatražio netko drugi ostaje kakav jest.
+    var target = remindTarget(med, f.date, f.time);
+    entry.remindAt = target ? (f.remind ? remindIso(target) : '') : (existing && existing.medId === med.id ? existing.remindAt || '' : '');
     var prevD = data.doses, prevM = data.meds;
     if (newMed) data.meds = prevM.concat([newMed]);
     data.doses = existing ? prevD.map(function (x) { return x.id === entry.id ? entry : x; }) : [entry].concat(prevD);
@@ -1981,6 +2191,8 @@
       if (apNewMed) apNewMed.dose = apAmount;
       apDose = { id: uid(), childId: child.id, medId: apMed.id, medName: apMed.name, unit: apMed.unit, date: f.date, time: f.time,
         dose: apAmount, note: '', slotDate: '', slot: '', antipyretic: true, tempId: entry.id };
+      var apTarget = remindTarget(apMed, f.date, f.time);
+      if (apTarget && f.apRemind) apDose.remindAt = remindIso(apTarget);
     }
     var prev = data.temps, prevD = data.doses, prevM = data.meds;
     data.temps = existing ? prev.map(function (x) { return x.id === entry.id ? entry : x; }) : [entry].concat(prev);
@@ -2411,6 +2623,15 @@
     var f = ui.form;
     if (/^share-/.test(a)) { shareAction(a, id); return; }
     switch (a) {
+      case 'push-on': enablePush(); break;
+      case 'push-off':
+        disablePush().then(function () {
+          renderRemindCard(activeChild());
+          if (ui.form) updateFormReminder();
+          flash(tx('Podsjetnici su isključeni na ovom uređaju.'));
+          var on = $('[data-fk="push-on"]'); if (on) on.focus({ preventScroll: true });
+        });
+        break;
       case 'invite-accept': acceptInvite(); break;
       case 'invite-dismiss': clearInvite(); renderDemoBanner(); break;
       case 'new':
@@ -2443,7 +2664,7 @@
       case 'f-med': {
         var prevMed = medById(f.medId), nextMed = medById(v);
         var prevDefault = prevMed && prevMed.dose !== '' && prevMed.dose != null ? fmtNum(prevMed.dose) : '';
-        f.medId = v;
+        f.medId = v; f.remind = null;
         b.parentNode.querySelectorAll('[data-action="f-med"]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
         $('#fNewMed').hidden = v !== '__new';
         if (nextMed && nextMed.dose !== '' && nextMed.dose != null && (!f.dose || f.dose === prevDefault)) {
@@ -2457,7 +2678,7 @@
       case 'f-ap': {
         var prevAp = medById(f.apMedId), nextAp = medById(v);
         var prevApDefault = prevAp && prevAp.dose !== '' && prevAp.dose != null ? fmtNum(prevAp.dose) : '';
-        f.apMedId = v;
+        f.apMedId = v; f.apRemind = null;
         b.parentNode.querySelectorAll('[data-action="f-ap"]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
         $('#fApNew').hidden = v !== '__new';
         $('#fApDoseRow').hidden = !v;
@@ -2676,7 +2897,7 @@
     if (t.id === 'q') { ui.q = t.value; renderList(); return; }
     var field = t.getAttribute('data-field');
     if (field && ui.form) {
-      ui.form[field] = t.value;
+      ui.form[field] = t.type === 'checkbox' ? t.checked : t.value;
       if (field === 'food' || field === 'dose' || field === 'value' || field === 'newMedName') showError('');
       if (t.id === 'fFood') updateAc();
       if (ui.formKind === 'dose' && (field === 'date' || field === 'time' || field === 'newMedUnit' || field === 'dose')) updateDoseInfo();
@@ -2757,6 +2978,8 @@
       if (t.value) medTimeT = setTimeout(function () { addMedTime(document.activeElement === t); }, 900);
       return;
     }
+    var pp = t.getAttribute && t.getAttribute('data-push');
+    if (pp) { setPushPref(pp, t.checked); return; }
     var xf = t.getAttribute && t.getAttribute('data-xfield');
     if (xf && ui.exp) {
       ui.exp[xf] = t.type === 'checkbox' ? t.checked : t.value;
@@ -2859,7 +3082,9 @@
   function signOut() {
     var u = auth.user;
     clearTimeout(sync.timer); clearTimeout(sync.retry);
-    sb.auth.signOut({ scope: 'local' }).then(function () {
+    // Podsjetnici ovog uređaja se gase prije odjave (brisanje treba prijavu); najviše 3 s čekanja.
+    var off = Promise.race([disablePush(), new Promise(function (r) { setTimeout(r, 3000); })]);
+    off.then(function () { return sb.auth.signOut({ scope: 'local' }); }).then(function () {
       if (u) { try { localStorage.removeItem('tanjuric.cache.' + u.id); } catch (e) { /* ignore */ } }
     });
   }
@@ -2869,6 +3094,7 @@
     auth.ready = true;
     auth.user = user; photoUrls = {}; closeLightbox();
     data = emptyData(); synced = {}; shares = {}; invites = {};
+    push.sub = null; push.prefs = null; push.err = ''; push.busy = false;
     ui.form = null; ui.editingId = null; ui.formKind = null; ui.legacy = null; ui.addingChild = false;
     ui.invite = null; ui.shareConfirm = null; ui.shareErr = ''; ui.shareBusy = false;
     if (!user) { setSignInDisabled(false); $('#inviteNote').hidden = !pendingInvite(); showScreen('login'); return; }

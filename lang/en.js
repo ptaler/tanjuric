@@ -274,6 +274,25 @@ window.I18N.add('en', {
   'Zapise za dijete {name} vide i mogu mijenjati svi s kojima je dijete podijeljeno. CSV je tvoja kopija za liječnika ili arhivu.': 'Everyone {name} is shared with can see and change these records. The CSV is your copy for the doctor or your archive.',
   'Podaci se spremaju na tvoj račun i vidljivi su samo tebi. CSV je tvoja kopija za liječnika ili arhivu.': 'Your data is saved to your account and visible only to you. The CSV is your copy for the doctor or your archive.',
 
+  // ---------- podsjetnici ----------
+  'Podsjetnici': 'Reminders',
+  'Na iPhoneu podsjetnici rade kad Tanjurić dodaš na početni zaslon: u Safariju dodirni Dijeli, zatim „Dodaj na početni zaslon”, pa otvori Tanjurić odande.': 'On iPhone, reminders work once you add Tanjurić to your Home Screen: in Safari, tap Share, then “Add to Home Screen”, and open Tanjurić from there.',
+  'Ovaj preglednik ne podržava obavijesti.': 'This browser doesn’t support notifications.',
+  'Obavijesti za Tanjurić blokirane su u postavkama preglednika. Dopusti ih ondje, pa uključi podsjetnike.': 'Notifications for Tanjurić are blocked in your browser settings. Allow them there, then turn reminders on.',
+  'Obavijest na ovom uređaju kad je vrijeme za svakodnevnu terapiju, kad prođe razmak do sljedeće doze i kad drugi roditelj upiše lijek.': 'Get a notification on this device when daily medication is due, when the gap before the next dose has passed, and when the other parent records a dose.',
+  'Uključi podsjetnike': 'Turn on reminders',
+  'Svakodnevne terapije u zadano vrijeme': 'Daily medication at its set time',
+  'Kad netko drugi upiše dozu': 'When someone else records a dose',
+  'Uz dozu lijeka s upisanim razmakom možeš zatražiti podsjetnik kad razmak prođe.': 'When you record a dose of a medicine with a minimum gap, you can ask to be reminded when the gap has passed.',
+  'Isključi na ovom uređaju': 'Turn off on this device',
+  'Podsjetnici su uključeni na ovom uređaju.': 'Reminders are on for this device.',
+  'Podsjetnici su isključeni na ovom uređaju.': 'Reminders are off for this device.',
+  'Podsjetnici još nisu spremni na poslužitelju. Pokušaj ponovno za minutu.': 'Reminders aren’t ready on the server yet. Try again in a minute.',
+  'Uključivanje podsjetnika nije uspjelo. Provjeri internetsku vezu i pokušaj ponovno.': 'Turning on reminders failed. Check your internet connection and try again.',
+  'Spremanje nije uspjelo. Provjeri internetsku vezu i pokušaj ponovno.': 'Saving failed. Check your internet connection and try again.',
+  'sutra u {time}': 'tomorrow at {time}',
+  'Podsjeti me kad prođe razmak ({when})': 'Remind me when the gap has passed ({when})',
+
   // ---------- lijekovi ----------
   'Naziv lijeka': 'Medicine name',
   'npr. Paracetamol sirup': 'e.g. Paracetamol syrup',
