@@ -139,7 +139,7 @@ textarea.input{resize:vertical;padding:10px 12px}
 .tag.ap{display:inline-flex;align-items:center;gap:4px;background:#FFF7ED;border-color:#FDBA74;color:#9A3412}
 .tag.ap svg{width:12px;height:12px}
 .med-item strong .tag.ap{font-size:12px;vertical-align:2px;margin-left:4px}
-.list-tools{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;font-size:14px}
+.list-tools{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;font-size:14px;margin-bottom:16px}
 .list-tools .toggle{flex:0 0 auto}
 .ap-toggle svg{width:16px;height:16px}
 .list-more{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px 14px;margin-top:16px;font-size:14px;text-align:center}
@@ -1006,6 +1006,21 @@ body.lb-open{overflow:hidden}
       <div class="count-row">
         <span id="countText" aria-live="polite"></span>
         <button type="button" class="btn-link" data-action="clear-filters" id="clearBtn" hidden data-i18n>Očisti pretragu</button>
+      </div>
+    </section>
+
+    <!-- Kartica Terapije: današnji plan, pa pretraga samo po nazivu lijeka -->
+    <div id="planHost"></div>
+    <section class="card search" id="doseSearchCard" aria-label="Pretraživanje terapija" data-i18n-attr="aria-label" hidden>
+      <div class="search-box">
+        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#52605C" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <label for="dq" class="sr-only" data-i18n>Pretraži terapije po nazivu lijeka</label>
+        <input id="dq" type="search" list="dqMeds" data-i18n-attr="placeholder" placeholder="Pretraži po nazivu lijeka…" autocomplete="off">
+        <datalist id="dqMeds"></datalist>
+      </div>
+      <div class="count-row">
+        <span id="dCountText" aria-live="polite"></span>
+        <button type="button" class="btn-link" data-action="clear-dose-search" id="dClearBtn" hidden data-i18n>Očisti pretragu</button>
       </div>
     </section>
 

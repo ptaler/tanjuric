@@ -832,7 +832,7 @@
   }
 
   var ui = {
-    q: '', fType: '', fAllergen: '', fRange: '', fReaction: false,
+    q: '', fType: '', fAllergen: '', fRange: '', fReaction: false, dq: '',
     form: null, editingId: null, confirmDeleteId: null,
     addingChild: false, editingAllergies: false,
     tab: 'meals', formKind: null,
@@ -889,7 +889,7 @@
   var DAYS_FIRST = 14, DAYS_MORE = 30;
   function shownDays(groups) {
     var child = activeChild();
-    var key = [ui.tab, child ? child.id : '', ui.q.trim(), ui.fType, ui.fAllergen, ui.fRange, ui.fReaction, ui.hideAp].join('|');
+    var key = [ui.tab, child ? child.id : '', ui.q.trim(), ui.fType, ui.fAllergen, ui.fRange, ui.fReaction, ui.hideAp, ui.dq.trim()].join('|');
     if (ui.daysKey !== key) { ui.daysKey = key; ui.daysShown = DAYS_FIRST; }
     return groups.slice(0, ui.daysShown);
   }
@@ -1043,6 +1043,7 @@
 
   function renderList() {
     $('#searchCard').hidden = ui.tab !== 'meals';
+    if (ui.tab !== 'doses') { $('#doseSearchCard').hidden = true; $('#planHost').innerHTML = ''; }
     if (ui.tab === 'doses') renderDoses();
     else if (ui.tab === 'temps') renderTemps();
     else if (ui.tab === 'all') renderTimeline();
@@ -1293,17 +1294,45 @@
     return t ? ' · ' + esc(tx('uz {v} °C', { v: fmtNum(t.value.toFixed(1)) })) : '';
   }
 
+  // Pretraga terapija: samo po nazivu lijeka (sve riječi upita moraju biti u nazivu).
+  function doseMatches(d) {
+    var words = norm(ui.dq.trim()).split(/\s+/).filter(Boolean);
+    if (!words.length) return true;
+    var name = norm(doseMedName(d));
+    return words.every(function (w) { return name.indexOf(w) >= 0; });
+  }
+  function renderDoseSearch(child, all, found) {
+    var card = $('#doseSearchCard'), q = ui.dq.trim();
+    card.hidden = !child || (!all.length && !q);
+    if (card.hidden) return;
+    var names = {};
+    childMeds(child).forEach(function (m) { names[m.name] = true; });
+    all.forEach(function (d) { names[doseMedName(d)] = true; });
+    var opts = Object.keys(names).sort(cmpText).map(function (n) { return '<option value="' + esc(n) + '">'; }).join('');
+    var dl = $('#dqMeds'); if (dl.innerHTML !== opts) dl.innerHTML = opts;
+    var input = $('#dq'); if (input.value !== ui.dq) input.value = ui.dq;
+    card.querySelector('.count-row').hidden = !q;
+    $('#dCountText').textContent = q ? tx('Pronađeno {n} od {total}', { n: found, total: all.length + ' ' + plural(all.length, 'terapija', 'terapije', 'terapija') }) : '';
+    $('#dClearBtn').hidden = !q;
+  }
+
   function renderDoses() {
-    var child = activeChild(), host = $('#list');
-    if (!child) { host.innerHTML = ''; return; }
-    var all = ofChild(data.doses, child).sort(byNewest), plan = planHtml(child);
-    var apCount = all.filter(isApDose).length;
-    var list = ui.hideAp ? all.filter(function (d) { return !isApDose(d); }) : all;
-    var tools = apCount ? '<div class="list-tools"><button type="button" class="toggle ap-toggle" data-action="toggle-ap" data-fk="toggle-ap" aria-pressed="' + !!ui.hideAp + '">' +
+    var child = activeChild(), host = $('#list'), planEl = $('#planHost');
+    if (!child) { host.innerHTML = ''; planEl.innerHTML = ''; renderDoseSearch(null, [], 0); return; }
+    var all = ofChild(data.doses, child).sort(byNewest);
+    planEl.innerHTML = planHtml(child);
+    var matched = all.filter(doseMatches);
+    var apCount = matched.filter(isApDose).length;
+    var list = ui.hideAp ? matched.filter(function (d) { return !isApDose(d); }) : matched;
+    renderDoseSearch(child, all, list.length);
+    var plan = apCount ? '<div class="list-tools"><button type="button" class="toggle ap-toggle" data-action="toggle-ap" data-fk="toggle-ap" aria-pressed="' + !!ui.hideAp + '">' +
       ICON.thermo + tx('Bez antipiretika') + '</button><span class="muted">' + (ui.hideAp
         ? tx('Skriveno: {n}', { n: apCount + ' ' + plural(apCount, 'doza antipiretika', 'doze antipiretika', 'doza antipiretika') })
         : apCount + ' ' + plural(apCount, 'doza antipiretika', 'doze antipiretika', 'doza antipiretika') + ' ' + tx('u popisu')) + '</span></div>' : '';
-    plan += tools;
+    if (ui.dq.trim() && !list.length) {
+      host.innerHTML = plan + emptyHtml(tx('Nema terapija koje odgovaraju pretrazi'), tx('Pretraga gleda samo naziv lijeka. Pokušaj s drugim nazivom ili očisti pretragu.'));
+      return;
+    }
     if (all.length && !list.length) {
       host.innerHTML = plan + emptyHtml(tx('Nema terapija bez antipiretika'), tx('Sve upisane terapije su antipiretici. Isključi filtar „Bez antipiretika” da ih vidiš.'));
       return;
@@ -2822,6 +2851,8 @@
         flash(tx(kind === 'dose' ? 'Terapija je obrisana.' : kind === 'temp' ? 'Mjerenje je obrisano.' : 'Obrok je obrisan.')); break;
       case 'toggle-reaction-filter':
         ui.fReaction = !ui.fReaction; renderList(); break;
+      case 'clear-dose-search':
+        ui.dq = ''; $('#dq').value = ''; renderDoses(); $('#dq').focus(); break;
       case 'clear-filters':
         ui.q = ''; ui.fType = ''; ui.fAllergen = ''; ui.fRange = ''; ui.fReaction = false;
         $('#q').value = ''; $('#fType').value = ''; $('#fAllergen').value = ''; $('#fRange').value = '';
@@ -2895,6 +2926,7 @@
   document.addEventListener('input', function (ev) {
     var t = ev.target;
     if (t.id === 'q') { ui.q = t.value; renderList(); return; }
+    if (t.id === 'dq') { ui.dq = t.value; renderDoses(); return; }
     var field = t.getAttribute('data-field');
     if (field && ui.form) {
       ui.form[field] = t.type === 'checkbox' ? t.checked : t.value;
