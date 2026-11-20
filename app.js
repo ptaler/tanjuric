@@ -37,6 +37,9 @@
   var TEMP_METHODS = ['Pazuh', 'Uho', 'Čelo', 'Usta', 'Rektalno'];
 
   var ICON = {
+    chart: '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></svg>',
+    shield: '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 4.5 3.4 8 8 9 4.6-1 8-4.5 8-9V6z"/><path d="M12 8v5"/><path d="M12 16h.01"/></svg>',
+    data: '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M4 20h16"/></svg>',
     warn: '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B45309" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 20h20L12 3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>',
     warnSm: '<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C2410C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 20h20L12 3z"/><path d="M12 10v4"/></svg>',
     plus: '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>',
@@ -838,7 +841,8 @@
     tab: 'meals', formKind: null,
     medForm: null, medEditingId: null, confirmMedDeleteId: null,
     confirmChildDeleteId: null, picking: false, occEdit: null, exp: null,
-    invite: null, shareConfirm: null, shareBusy: false, shareErr: ''
+    invite: null, shareConfirm: null, shareBusy: false, shareErr: '',
+    sheet: null   // mobitel: id kartice bočnog stupca otvorene u donjem panelu
   };
   try {
     var savedTab = localStorage.getItem(TAB_KEY);
@@ -1304,16 +1308,56 @@
   function renderDoseSearch(child, all, found) {
     var card = $('#doseSearchCard'), q = ui.dq.trim();
     card.hidden = !child || (!all.length && !q);
-    if (card.hidden) return;
-    var names = {};
-    childMeds(child).forEach(function (m) { names[m.name] = true; });
-    all.forEach(function (d) { names[doseMedName(d)] = true; });
-    var opts = Object.keys(names).sort(cmpText).map(function (n) { return '<option value="' + esc(n) + '">'; }).join('');
-    var dl = $('#dqMeds'); if (dl.innerHTML !== opts) dl.innerHTML = opts;
+    if (card.hidden) { closeDqAc(); return; }
     var input = $('#dq'); if (input.value !== ui.dq) input.value = ui.dq;
     card.querySelector('.count-row').hidden = !q;
     $('#dCountText').textContent = q ? tx('Pronađeno {n} od {total}', { n: found, total: all.length + ' ' + plural(all.length, 'terapija', 'terapije', 'terapija') }) : '';
     $('#dClearBtn').hidden = !q;
+  }
+
+  // Prijedlozi u pretrazi terapija (kao kod upisa obroka): nazivi lijekova s upisanim dozama
+  // ovog djeteta koji sadrže sve riječi upita; češće i novije davani ranije.
+  var dqAc = { items: [], active: -1, open: false };
+  function doseSuggestions(q) {
+    var words = norm(q).trim().split(/\s+/).filter(Boolean), child = activeChild();
+    if (!words.length || !child) return [];
+    var exact = norm(q).trim(), by = {};
+    ofChild(data.doses, child).forEach(function (d) {
+      var name = doseMedName(d), key = norm(name).trim(); if (!key) return;
+      var g = by[key] || (by[key] = { key: key, name: name, count: 0, last: null });
+      g.count++;
+      if (!g.last || stamp(d.date, d.time) > stamp(g.last.date, g.last.time)) g.last = d;
+    });
+    return Object.keys(by).map(function (k) { return by[k]; }).filter(function (g) {
+      return g.key !== exact && words.every(function (w) { return g.key.indexOf(w) >= 0; });
+    }).sort(function (a, b) {
+      return (b.count - a.count) || (stamp(b.last.date, b.last.time) - stamp(a.last.date, a.last.time));
+    }).slice(0, 6);
+  }
+  function renderDqAc() {
+    var list = $('#dqList'), input = $('#dq'); if (!list || !input) return;
+    dqAc.open = dqAc.items.length > 0;
+    list.hidden = !dqAc.open;
+    input.setAttribute('aria-expanded', String(dqAc.open));
+    if (dqAc.active >= 0 && dqAc.open) input.setAttribute('aria-activedescendant', 'dqOpt' + dqAc.active); else input.removeAttribute('aria-activedescendant');
+    list.innerHTML = dqAc.items.map(function (g, i) {
+      return '<li id="dqOpt' + i + '" role="option" class="ac-item" aria-selected="' + (i === dqAc.active) + '" data-dqac="' + i + '">' +
+        '<strong>' + esc(g.name) + '</strong></li>';
+    }).join('');
+  }
+  function updateDqAc() {
+    var input = $('#dq'); if (!input) return;
+    dqAc.items = doseSuggestions(input.value); dqAc.active = -1;
+    renderDqAc();
+  }
+  function closeDqAc() { if (!dqAc.items.length && !dqAc.open) return; dqAc.items = []; dqAc.active = -1; renderDqAc(); }
+  function pickDqAc(i) {
+    var g = dqAc.items[i]; if (!g) return;
+    var input = $('#dq');
+    ui.dq = g.name; input.value = g.name;
+    closeDqAc();
+    renderDoses();
+    input.focus();
   }
 
   function renderDoses() {
@@ -1512,6 +1556,103 @@
   }
 
   function renderAside() {
+    renderAsideCards();
+    renderAsideNav();
+  }
+
+  // ---------- mobitel: traka prečaca + donji panel ----------
+  // Na uskom zaslonu bočni stupac je skriven panel; svaki prečac otvara jednu njegovu karticu.
+  var mqPhone = window.matchMedia('screen and (max-width:640px)');
+  function asideCount(id, child) {
+    if (!child) return 0;
+    if (id === 'medCard') return childMeds(child).length;
+    if (id === 'allergyCard') return knownOf(child).length;
+    return 0;
+  }
+  function renderAsideNav() {
+    var nav = $('#asideNav'); if (!nav) return;
+    var child = activeChild();
+    var items = [
+      { id: 'statsCard', icon: ICON.chart, label: tx('Pregled') },
+      { id: 'medCard', icon: ICON.pill, label: tx('Lijekovi') },
+      { id: 'remindCard', icon: ICON.bell, label: tx('Podsjetnici') },
+      { id: 'allergyCard', icon: ICON.shield, label: tx('Alergije') },
+      { id: 'shareCard', icon: ICON.people, label: tx('Dijeljenje') },
+      { id: 'dataCard', icon: ICON.data, label: tx('Podaci') }
+    ].filter(function (it) { var el = document.getElementById(it.id); return el && !el.hidden; });
+    // Kartica je nestala ili je dijete promijenjeno (npr. obrisano iz panela) — panel se zatvara.
+    if (ui.sheet && (!child || ui.sheetChild !== child.id || !items.some(function (it) { return it.id === ui.sheet; }))) closeSheet(false);
+    nav.innerHTML = child ? items.map(function (it) {
+      var n = asideCount(it.id, child);
+      return '<button type="button" class="nav-chip" data-action="sheet-open" data-val="' + it.id + '" data-fk="sheet-' + it.id + '"' +
+        ' aria-haspopup="dialog" aria-expanded="' + (ui.sheet === it.id) + '">' + it.icon.replace(/width="\d+" height="\d+"/, 'width="16" height="16"') +
+        esc(it.label) + (n ? '<span class="n">' + n + '</span>' : '') + '</button>';
+    }).join('') : '';
+  }
+  function openSheet(id) {
+    var card = document.getElementById(id);
+    if (!card || card.hidden || !mqPhone.matches) return;
+    var aside = $('#aside');
+    Array.prototype.forEach.call(aside.querySelectorAll('.aside-card'), function (c) { c.classList.toggle('sheet-on', c.id === id); });
+    ui.sheet = id;
+    ui.sheetChild = data.activeChild;
+    var label = (card.querySelector('h2') || {}).textContent || '';
+    aside.setAttribute('role', 'dialog');
+    aside.setAttribute('aria-modal', 'true');
+    aside.setAttribute('aria-label', label);
+    aside.scrollTop = 0;
+    aside.style.transform = '';
+    $('#sheetBackdrop').hidden = false;
+    ['header.top', '#main', '.app-foot', '#fab'].forEach(function (s) { var el = $(s); if (el) el.inert = true; });
+    document.body.classList.add('sheet-open');
+    aside.classList.add('open');
+    renderAsideNav();
+    $('.sheet-close').focus({ preventScroll: true });
+  }
+  function closeSheet(restoreFocus) {
+    if (!ui.sheet) return;
+    var id = ui.sheet, aside = $('#aside');
+    ui.sheet = null;
+    aside.classList.remove('open', 'dragging');
+    aside.style.transform = '';
+    aside.removeAttribute('role');
+    aside.removeAttribute('aria-modal');
+    aside.setAttribute('aria-label', tx('Pregled'));
+    $('#sheetBackdrop').hidden = true;
+    ['header.top', '#main', '.app-foot', '#fab'].forEach(function (s) { var el = $(s); if (el) el.inert = false; });
+    document.body.classList.remove('sheet-open');
+    Array.prototype.forEach.call(aside.querySelectorAll('.aside-card.sheet-on'), function (c) { c.classList.remove('sheet-on'); });
+    renderAsideNav();
+    if (restoreFocus) { var chip = $('[data-fk="sheet-' + id + '"]'); if (chip) chip.focus({ preventScroll: true }); }
+  }
+  // Prelazak na široki zaslon (okretanje tableta, promjena prozora): panel se zatvara, stupac je opet uz popis.
+  if (mqPhone.addEventListener) mqPhone.addEventListener('change', function (e) { if (!e.matches) closeSheet(false); });
+  // Povlačenje panela prema dolje zatvara ga — samo kad je sadržaj panela na vrhu.
+  (function () {
+    var aside = $('#aside'), y0 = null, dy = 0;
+    if (!aside) return;
+    aside.addEventListener('touchstart', function (ev) {
+      if (!ui.sheet || ev.touches.length !== 1 || aside.scrollTop > 0) { y0 = null; return; }
+      if (ev.target.closest('input,select,textarea')) { y0 = null; return; }
+      y0 = ev.touches[0].clientY; dy = 0;
+    }, { passive: true });
+    aside.addEventListener('touchmove', function (ev) {
+      if (y0 == null) return;
+      dy = ev.touches[0].clientY - y0;
+      if (dy <= 0) { if (aside.classList.contains('dragging')) { aside.classList.remove('dragging'); aside.style.transform = ''; } y0 = dy < -8 ? null : y0; return; }
+      ev.preventDefault();
+      aside.classList.add('dragging');
+      aside.style.transform = 'translateY(' + dy + 'px)';
+    }, { passive: false });
+    aside.addEventListener('touchend', function () {
+      if (y0 == null) return;
+      y0 = null;
+      aside.classList.remove('dragging');
+      if (dy > 90) closeSheet(true); else aside.style.transform = '';
+    });
+  })();
+
+  function renderAsideCards() {
     var child = activeChild();
     var stats = $('#statsCard'), ac = $('#allergyCard');
     $('#dataCard').hidden = !child;
@@ -2651,16 +2792,20 @@
   }
 
   // Prijedlog jela: mousedown ne smije maknuti fokus s polja, odabir na klik.
-  document.addEventListener('mousedown', function (ev) { if (ev.target.closest && ev.target.closest('[data-ac]')) ev.preventDefault(); });
+  document.addEventListener('mousedown', function (ev) { if (ev.target.closest && ev.target.closest('[data-ac],[data-dqac]')) ev.preventDefault(); });
   document.addEventListener('click', function (ev) {
     var acItem = ev.target.closest && ev.target.closest('[data-ac]');
     if (acItem) { pickAc(Number(acItem.getAttribute('data-ac'))); return; }
+    var dqItem = ev.target.closest && ev.target.closest('[data-dqac]');
+    if (dqItem) { pickDqAc(Number(dqItem.getAttribute('data-dqac'))); return; }
     var b = ev.target.closest('[data-action]');
     if (!b) return;
     var a = b.getAttribute('data-action'), v = b.getAttribute('data-val'), id = b.getAttribute('data-id');
     var f = ui.form;
     if (/^share-/.test(a)) { shareAction(a, id); return; }
     switch (a) {
+      case 'sheet-open': openSheet(v); break;
+      case 'sheet-close': closeSheet(true); break;
       case 'push-on': enablePush(); break;
       case 'push-off':
         disablePush().then(function () {
@@ -2861,7 +3006,7 @@
       case 'toggle-reaction-filter':
         ui.fReaction = !ui.fReaction; renderList(); break;
       case 'clear-dose-search':
-        ui.dq = ''; $('#dq').value = ''; renderDoses(); $('#dq').focus(); break;
+        ui.dq = ''; $('#dq').value = ''; closeDqAc(); renderDoses(); $('#dq').focus(); break;
       case 'clear-filters':
         ui.q = ''; ui.fType = ''; ui.fAllergen = ''; ui.fRange = ''; ui.fReaction = false;
         $('#q').value = ''; $('#fType').value = ''; $('#fAllergen').value = ''; $('#fRange').value = '';
@@ -2935,7 +3080,7 @@
   document.addEventListener('input', function (ev) {
     var t = ev.target;
     if (t.id === 'q') { ui.q = t.value; renderList(); return; }
-    if (t.id === 'dq') { ui.dq = t.value; renderDoses(); return; }
+    if (t.id === 'dq') { ui.dq = t.value; renderDoses(); updateDqAc(); return; }
     var field = t.getAttribute('data-field');
     if (field && ui.form) {
       ui.form[field] = t.type === 'checkbox' ? t.checked : t.value;
@@ -3048,6 +3193,7 @@
       return;
     }
     if (ev.target.id === 'fFood') setTimeout(function () { if (!document.activeElement || document.activeElement.id !== 'fFood') closeAc(); }, 150);
+    if (ev.target.id === 'dq') setTimeout(function () { if (!document.activeElement || document.activeElement.id !== 'dq') closeDqAc(); }, 150);
   });
 
   document.addEventListener('keydown', function (ev) {
@@ -3059,11 +3205,20 @@
       if (ev.key === 'Escape') { ev.preventDefault(); closeAc(); return; }
       if (ev.key === 'Tab') closeAc();
     }
+    if (ev.target.id === 'dq' && dqAc.open) {
+      var k = dqAc.items.length;
+      if (ev.key === 'ArrowDown') { ev.preventDefault(); dqAc.active = (dqAc.active + 1) % k; renderDqAc(); return; }
+      if (ev.key === 'ArrowUp') { ev.preventDefault(); dqAc.active = dqAc.active <= 0 ? k - 1 : dqAc.active - 1; renderDqAc(); return; }
+      if (ev.key === 'Enter' && dqAc.active >= 0) { ev.preventDefault(); pickDqAc(dqAc.active); return; }
+      if (ev.key === 'Escape') { ev.preventDefault(); closeDqAc(); return; }
+      if (ev.key === 'Tab') closeDqAc();
+    }
     if (!$('#lightbox').hidden) {
       if (ev.key === 'Escape') { ev.preventDefault(); closeLightbox(); }
       else if (ev.key === 'Tab') { ev.preventDefault(); $('#lbClose').focus(); }
       return;
     }
+    if (ev.key === 'Escape' && ui.sheet && !ev.defaultPrevented) { ev.preventDefault(); closeSheet(true); return; }
     if (ev.key === 'Enter' && ev.target.id === 'mTimeNew') { ev.preventDefault(); addMedTime(true); return; }
     if (ev.key === 'Enter' && ev.target.id === 'occTime') {
       ev.preventDefault();

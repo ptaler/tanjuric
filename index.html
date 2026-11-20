@@ -177,6 +177,7 @@ textarea.input{resize:vertical;padding:10px 12px}
 .search{display:flex;flex-direction:column;gap:12px}
 .search-box{position:relative}
 .search-box svg{position:absolute;left:14px;top:14px;pointer-events:none}
+.search-box .ac-list{top:calc(100% + 6px)}
 .search-box input{min-height:48px;width:100%;padding:10px 14px 10px 44px;border:1px solid var(--line2);border-radius:12px;font-size:16px;background:var(--soft)}
 .filters{display:flex;flex-wrap:wrap;gap:8px}
 .filters select{min-height:44px;flex:1 1 150px;padding:8px 10px;border:1px solid var(--line2);border-radius:10px;font-size:14px;background:#fff}
@@ -584,6 +585,29 @@ body.lb-open{overflow:hidden}
   .form{padding:16px}
   .form-actions .btn{max-width:none}
 }
+
+/* Mobitel: bočni stupac postaje donji panel, a do njegovih kartica vodi traka prečaca ispod kartica */
+.aside-nav,.sheet-head,.sheet-backdrop{display:none}
+@media screen and (max-width:640px){
+  .aside-nav{display:flex;gap:8px;overflow-x:auto;margin:-8px -16px 0;padding:2px 16px 4px;scrollbar-width:none}
+  .aside-nav::-webkit-scrollbar{display:none}
+  .nav-chip{flex:0 0 auto;min-height:44px;padding:0 14px;border-radius:999px;border:1px solid var(--line2);background:var(--surface);color:var(--text3);font-size:14px;font-weight:600;display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+  .nav-chip .n{font-size:12px;font-weight:700;padding:1px 7px;border-radius:999px;background:#EEF1F0;color:var(--muted);font-variant-numeric:tabular-nums}
+  .nav-chip[aria-expanded="true"]{background:var(--tint);border-color:var(--accent);color:var(--accent-text)}
+  .sheet-backdrop{display:block;position:fixed;inset:0;z-index:39;background:rgba(10,20,18,.45)}
+  aside{position:fixed;left:0;right:0;bottom:0;z-index:40;max-height:85vh;max-height:85dvh;overflow-y:auto;overscroll-behavior:contain;gap:0;
+    background:var(--surface);border-radius:20px 20px 0 0;box-shadow:0 -10px 32px rgba(10,20,18,.2);padding:0 16px calc(24px + env(safe-area-inset-bottom));
+    transform:translateY(100%);visibility:hidden;transition:transform .25s ease,visibility 0s .25s}
+  aside.open{transform:none;visibility:visible;transition:transform .25s ease}
+  aside.dragging{transition:none}
+  aside .aside-card{display:none;border:none;border-radius:0;padding:0;background:transparent}
+  aside .aside-card.sheet-on{display:flex}
+  .sheet-head{display:flex;position:sticky;top:0;z-index:1;justify-content:flex-end;align-items:center;padding:10px 0 2px;margin-right:-8px;background:var(--surface)}
+  .sheet-grip{position:absolute;left:50%;top:8px;width:40px;height:5px;margin-left:-20px;border-radius:3px;background:var(--line2)}
+  .sheet-close{border:none;background:transparent}
+  body.sheet-open{overflow:hidden}
+}
+@media (prefers-reduced-motion:reduce){aside{transition:none !important}}
 @media print{
   body{background:#fff}
   .top-row .btn-primary,.child-bar,.search,.demo,.flash,.fab,.entry-actions,.confirm,aside .aside-actions,#allergyCard,#formHost,.tabs,#medCard .btn-link,.med-form,.top-actions,.top-deco,.child-delete,.occ-actions,.app-foot,.lightbox,#shareCard,.list-more,.child-chip .shared-ico{display:none !important}
@@ -978,6 +1002,8 @@ body.lb-open{overflow:hidden}
 <div class="wrap layout">
   <main id="main">
     <div class="tabs" id="tabs" role="group" aria-label="Prikaz dnevnika" data-i18n-attr="aria-label"></div>
+    <!-- Mobitel: prečaci do kartica iz bočnog stupca, koje se otvaraju kao donji panel -->
+    <div class="aside-nav" id="asideNav" role="group" aria-label="Pregled i postavke" data-i18n-attr="aria-label"></div>
     <div id="demoBanner"></div>
     <div id="flash" role="status" aria-live="polite"></div>
     <div id="formHost"></div>
@@ -1017,8 +1043,9 @@ body.lb-open{overflow:hidden}
       <div class="search-box">
         <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#52605C" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         <label for="dq" class="sr-only" data-i18n>Pretraži terapije po nazivu lijeka</label>
-        <input id="dq" type="search" list="dqMeds" data-i18n-attr="placeholder" placeholder="Pretraži po nazivu lijeka…" autocomplete="off">
-        <datalist id="dqMeds"></datalist>
+        <input id="dq" type="search" data-i18n-attr="placeholder" placeholder="Pretraži po nazivu lijeka…" autocomplete="off"
+          role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="dqList">
+        <ul id="dqList" class="ac-list" role="listbox" aria-label="Prijedlozi lijekova" data-i18n-attr="aria-label" hidden></ul>
       </div>
       <div class="count-row">
         <span id="dCountText" aria-live="polite"></span>
@@ -1029,7 +1056,13 @@ body.lb-open{overflow:hidden}
     <div id="list"></div>
   </main>
 
-  <aside aria-label="Pregled" data-i18n-attr="aria-label">
+  <aside id="aside" aria-label="Pregled" data-i18n-attr="aria-label">
+    <div class="sheet-head">
+      <span class="sheet-grip" aria-hidden="true"></span>
+      <button type="button" class="icon-btn sheet-close" data-action="sheet-close" aria-label="Zatvori" data-i18n-attr="aria-label">
+        <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      </button>
+    </div>
     <section class="card aside-card" id="statsCard"></section>
     <section class="card aside-card" id="medCard" hidden></section>
     <section class="card aside-card" id="remindCard" hidden></section>
@@ -1043,6 +1076,7 @@ body.lb-open{overflow:hidden}
     </section>
   </aside>
 </div>
+<div class="sheet-backdrop" id="sheetBackdrop" data-action="sheet-close" hidden></div>
 <footer class="wrap app-foot">
   <span data-i18n>Pitanja, prijedlozi ili nešto ne radi? Piši na <a href="mailto:info@tanjuric.com">info@tanjuric.com</a></span>
   <span data-i18n>Tanjurić pomaže voditi evidenciju i ne zamjenjuje liječničku procjenu.</span>

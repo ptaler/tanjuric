@@ -274,6 +274,11 @@ window.I18N.add('en', {
   'Zapise za dijete {name} vide i mogu mijenjati svi s kojima je dijete podijeljeno. CSV je tvoja kopija za liječnika ili arhivu.': 'Everyone {name} is shared with can see and change these records. The CSV is your copy for the doctor or your archive.',
   'Podaci se spremaju na tvoj račun i vidljivi su samo tebi. CSV je tvoja kopija za liječnika ili arhivu.': 'Your data is saved to your account and visible only to you. The CSV is your copy for the doctor or your archive.',
 
+  // ---------- mobitel: traka prečaca do kartica bočnog stupca ----------
+  'Pregled i postavke': 'Overview and settings',
+  'Lijekovi': 'Medicines',
+  'Alergije': 'Allergies',
+
   // ---------- podsjetnici ----------
   'Podsjetnici': 'Reminders',
   'Na iPhoneu podsjetnici rade kad Tanjurić dodaš na početni zaslon: u Safariju dodirni Dijeli, zatim „Dodaj na početni zaslon”, pa otvori Tanjurić odande.': 'On iPhone, reminders work once you add Tanjurić to your Home Screen: in Safari, tap Share, then “Add to Home Screen”, and open Tanjurić from there.',
@@ -628,6 +633,7 @@ window.I18N.add('en', {
   'Pretraživanje terapija': 'Search medication',
   'Pretraži terapije po nazivu lijeka': 'Search medication by medicine name',
   'Pretraži po nazivu lijeka…': 'Search by medicine name…',
+  'Prijedlozi lijekova': 'Medicine suggestions',
   'Nema terapija koje odgovaraju pretrazi': 'No doses match your search',
   'Pretraga gleda samo naziv lijeka. Pokušaj s drugim nazivom ili očisti pretragu.': 'The search only looks at the medicine name. Try another name or clear the search.',
   'Pregled': 'Overview',
