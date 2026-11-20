@@ -1956,7 +1956,10 @@
     host.innerHTML =
       '<section class="card form" id="formCard" aria-labelledby="formTitle">' +
       '<div class="form-head"><div><h2 id="formTitle">' + tx(ui.editingId ? 'Uredi obrok' : 'Novi obrok') + '</h2><p class="muted" style="font-size:14px">' + tx('Dijete:') + ' ' + esc(child ? child.name : '') + '</p></div>' +
-      '<button type="button" class="icon-btn" data-action="close-form" aria-label="' + tx('Zatvori obrazac') + '">' + ICON.x + '</button></div>' +
+      // Spremanje i na vrhu, da se ne mora pomicati do dna; dostupno tek kad je upisano jelo.
+      '<div class="form-head-actions"><button type="button" class="btn btn-primary" id="fHeadSave" data-action="save"' + (String(f.food || '').trim() ? '' : ' disabled') + '>' +
+      ICON.check + tx('Spremi') + '</button>' +
+      '<button type="button" class="icon-btn" data-action="close-form" aria-label="' + tx('Zatvori obrazac') + '">' + ICON.x + '</button></div></div>' +
 
       '<div class="grid2"><div class="field"><label for="fDate">' + tx('Datum') + '</label><input id="fDate" class="input" type="date" data-field="date" value="' + esc(f.date) + '" required></div>' +
       '<div class="field"><label for="fTime">' + tx('Vrijeme') + '</label><input id="fTime" class="input" type="time" data-field="time" value="' + esc(f.time) + '" required></div></div>' +
@@ -2061,10 +2064,16 @@
     renderAc();
   }
   function closeAc() { ac.items = []; ac.active = -1; renderAc(); }
+  // Gumb „Spremi” u zaglavlju obrasca obroka: omogućen tek kad je upisano što je dijete jelo.
+  function updateHeadSave() {
+    var b = $('#fHeadSave'); if (!b || !ui.form) return;
+    b.disabled = !String(ui.form.food || '').trim();
+  }
   function pickAc(i) {
     var g = ac.items[i], f = ui.form; if (!g || !f) return;
     var ta = $('#fFood');
     f.food = g.food; ta.value = g.food;
+    updateHeadSave();
     f.allergens = g.last.allergens.slice();
     document.querySelectorAll('[data-action="f-allergen"]').forEach(function (b) {
       b.setAttribute('aria-pressed', String(f.allergens.indexOf(b.getAttribute('data-val')) >= 0));
@@ -2931,7 +2940,7 @@
     if (field && ui.form) {
       ui.form[field] = t.type === 'checkbox' ? t.checked : t.value;
       if (field === 'food' || field === 'dose' || field === 'value' || field === 'newMedName') showError('');
-      if (t.id === 'fFood') updateAc();
+      if (t.id === 'fFood') { updateAc(); updateHeadSave(); }
       if (ui.formKind === 'dose' && (field === 'date' || field === 'time' || field === 'newMedUnit' || field === 'dose')) updateDoseInfo();
       if (ui.formKind === 'temp' && field === 'value') updateTempBadge();
       if (ui.formKind === 'temp' && (field === 'date' || field === 'time' || field === 'apDose' || field === 'apNewUnit')) updateApInfo();
