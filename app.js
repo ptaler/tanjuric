@@ -1560,9 +1560,9 @@
     renderAsideNav();
   }
 
-  // ---------- mobitel: traka prečaca + donji panel ----------
-  // Na uskom zaslonu bočni stupac je skriven panel; svaki prečac otvara jednu njegovu karticu.
-  var mqPhone = window.matchMedia('screen and (max-width:640px)');
+  // ---------- mobitel i tablet: traka prečaca + donji panel ----------
+  // Na mobitelu i tabletu bočni stupac je skriven panel; svaki prečac otvara jednu njegovu karticu.
+  var mqSheet = window.matchMedia('screen and (max-width:900px)');   // ista granica kao u CSS-u (index.html)
   function asideCount(id, child) {
     if (!child) return 0;
     if (id === 'medCard') return childMeds(child).length;
@@ -1591,7 +1591,7 @@
   }
   function openSheet(id) {
     var card = document.getElementById(id);
-    if (!card || card.hidden || !mqPhone.matches) return;
+    if (!card || card.hidden || !mqSheet.matches) return;
     var aside = $('#aside');
     Array.prototype.forEach.call(aside.querySelectorAll('.aside-card'), function (c) { c.classList.toggle('sheet-on', c.id === id); });
     ui.sheet = id;
@@ -1626,7 +1626,7 @@
     if (restoreFocus) { var chip = $('[data-fk="sheet-' + id + '"]'); if (chip) chip.focus({ preventScroll: true }); }
   }
   // Prelazak na široki zaslon (okretanje tableta, promjena prozora): panel se zatvara, stupac je opet uz popis.
-  if (mqPhone.addEventListener) mqPhone.addEventListener('change', function (e) { if (!e.matches) closeSheet(false); });
+  if (mqSheet.addEventListener) mqSheet.addEventListener('change', function (e) { if (!e.matches) closeSheet(false); });
   // Povlačenje panela prema dolje zatvara ga — samo kad je sadržaj panela na vrhu.
   (function () {
     var aside = $('#aside'), y0 = null, dy = 0;

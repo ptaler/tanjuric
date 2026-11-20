@@ -586,16 +586,18 @@ body.lb-open{overflow:hidden}
   .form-actions .btn{max-width:none}
 }
 
-/* Mobitel: bočni stupac postaje donji panel, a do njegovih kartica vodi traka prečaca ispod kartica */
+/* Mobitel i tablet: bočni stupac postaje donji panel, a do njegovih kartica vodi traka prečaca ispod kartica.
+   Granica 900px mora odgovarati onoj u app.js (mqSheet); iznad nje stupac je uvijek uz popis (bez prelamanja). */
 .aside-nav,.sheet-head,.sheet-backdrop{display:none}
-@media screen and (max-width:640px){
-  .aside-nav{display:flex;gap:8px;overflow-x:auto;margin:-8px -16px 0;padding:2px 16px 4px;scrollbar-width:none}
+@media screen and (min-width:901px){.layout{flex-wrap:nowrap}}
+@media screen and (max-width:900px){
+  .aside-nav{display:flex;gap:8px;overflow-x:auto;margin:-8px -20px 0;padding:2px 20px 4px;scrollbar-width:none}
   .aside-nav::-webkit-scrollbar{display:none}
   .nav-chip{flex:0 0 auto;min-height:44px;padding:0 14px;border-radius:999px;border:1px solid var(--line2);background:var(--surface);color:var(--text3);font-size:14px;font-weight:600;display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
   .nav-chip .n{font-size:12px;font-weight:700;padding:1px 7px;border-radius:999px;background:#EEF1F0;color:var(--muted);font-variant-numeric:tabular-nums}
   .nav-chip[aria-expanded="true"]{background:var(--tint);border-color:var(--accent);color:var(--accent-text)}
   .sheet-backdrop{display:block;position:fixed;inset:0;z-index:39;background:rgba(10,20,18,.45)}
-  aside{position:fixed;left:0;right:0;bottom:0;z-index:40;max-height:85vh;max-height:85dvh;overflow-y:auto;overscroll-behavior:contain;gap:0;
+  aside{position:fixed;left:0;right:0;bottom:0;z-index:40;width:auto;max-width:640px;margin:0 auto;max-height:85vh;max-height:85dvh;overflow-y:auto;overscroll-behavior:contain;gap:0;
     background:var(--surface);border-radius:20px 20px 0 0;box-shadow:0 -10px 32px rgba(10,20,18,.2);padding:0 16px calc(24px + env(safe-area-inset-bottom));
     transform:translateY(100%);visibility:hidden;transition:transform .25s ease,visibility 0s .25s}
   aside.open{transform:none;visibility:visible;transition:transform .25s ease}
@@ -606,6 +608,9 @@ body.lb-open{overflow:hidden}
   .sheet-grip{position:absolute;left:50%;top:8px;width:40px;height:5px;margin-left:-20px;border-radius:3px;background:var(--line2)}
   .sheet-close{border:none;background:transparent}
   body.sheet-open{overflow:hidden}
+}
+@media screen and (max-width:640px){
+  .aside-nav{margin-left:-16px;margin-right:-16px;padding-left:16px;padding-right:16px}
 }
 @media (prefers-reduced-motion:reduce){aside{transition:none !important}}
 @media print{
