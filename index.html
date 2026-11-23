@@ -1114,5 +1114,16 @@ body.lb-open{overflow:hidden}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.115.0/dist/umd/supabase.js" defer></script>
 <script src="config.js" defer></script>
 <script src="app.js" defer></script>
+<!-- Vercel Web Analytics (bez kolačića). Šalje se samo adresa bez upita i #: u njima su
+     token pozivnice (?pozivnica=), ID djeteta (?terapije=) i tokeni prijave. -->
+<script>
+  window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+  window.va('beforeSend', function (ev) {
+    var u = new URL(ev.url);
+    ev.url = u.origin + u.pathname;
+    return ev;
+  });
+</script>
+<script src="/_vercel/insights/script.js" defer></script>
 </body>
 </html>
