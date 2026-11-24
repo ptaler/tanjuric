@@ -54,6 +54,7 @@
     check: '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg>',
     people: '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3 19c.6-3.2 3-5 6-5s5.4 1.8 6 5"/><circle cx="17" cy="9" r="2.4"/><path d="M16.5 14.2c2.4.2 4 1.7 4.5 4.3"/></svg>',
     bell: '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 0 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9z"/><path d="M10 20a2.2 2.2 0 0 0 4 0"/></svg>',
+    card: '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="M2.5 10h19"/><path d="M6.5 15h4"/></svg>',
     link: '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>',
     search: '<svg aria-hidden="true" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#A9B4B1" stroke-width="1.6" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>'
   };
@@ -710,6 +711,177 @@
       applyOpenRequest();
       refreshNow();   // obavijest drugog roditelja: dohvati njegov upis
     });
+  }
+
+  // ---------- pretplata (Paddle) ----------
+  // Zasad samo za administratore: model pretplate još nije odlučen, a Paddle radi u sandboxu.
+  // Paddle je prodavač (Merchant of Record): Paddle.js otvara njegov checkout, a stanje pretplate
+  // stiže webhookom (Edge Function paddle-webhook) u public.subscriptions, koju ovdje samo čitamo.
+  // Paddle.js se učitava tek na klik „Pretplati se”, pa ostali korisnici ne učitavaju ništa s Paddlea.
+  var PADDLE = CFG.paddle && CFG.paddle.token && CFG.paddle.priceId ? CFG.paddle : null;
+  var SUB_LIVE = { active: true, trialing: true, past_due: true };
+  var billing = { admin: false, loaded: false, rows: [], busy: false, err: '', waitUntil: 0, paddleP: null };
+
+  function currentSub() {
+    var rank = function (s) { return SUB_LIVE[s.status] ? 0 : s.status === 'paused' ? 1 : 2; };
+    return billing.rows.slice().sort(function (a, b) {
+      return rank(a) - rank(b) || (a.updated_at < b.updated_at ? 1 : a.updated_at > b.updated_at ? -1 : 0);
+    })[0] || null;
+  }
+  function loadBilling() {
+    if (!sb || !auth.user || !billing.admin) return Promise.resolve();
+    var user = auth.user;
+    return sb.from('subscriptions')
+      .select('id, status, billing_interval, current_period_end, trial_end, cancel_at, canceled_at, updated_at')
+      .order('updated_at', { ascending: false }).then(check).then(function (res) {
+        if (auth.user !== user) return;
+        billing.rows = res.data || []; billing.loaded = true;
+        renderSubCard(); renderAsideNav();
+      }).catch(function (err) {
+        console.error('Pretplatu nije moguće učitati', err);
+        if (auth.user !== user) return;
+        billing.err = tx('Stanje pretplate nije moguće učitati.');
+        renderSubCard();
+      });
+  }
+  function loadPaddle() {
+    if (billing.paddleP) return billing.paddleP;
+    billing.paddleP = new Promise(function (resolve, reject) {
+      var s = document.createElement('script');
+      s.src = 'https://cdn.paddle.com/paddle/v2/paddle.js';
+      s.async = true;
+      s.onload = function () {
+        try {
+          if (PADDLE.env === 'sandbox') window.Paddle.Environment.set('sandbox');
+          window.Paddle.Initialize({ token: PADDLE.token, eventCallback: onPaddleEvent });
+          resolve(window.Paddle);
+        } catch (e) { reject(e); }
+      };
+      s.onerror = function () { reject(new Error('Paddle.js se nije učitao')); };
+      document.head.appendChild(s);
+    });
+    billing.paddleP.catch(function () { billing.paddleP = null; });
+    return billing.paddleP;
+  }
+  // Plaćanje je prošlo u checkoutu; pretplata u bazi pojavi se kad stigne webhook (obično za par sekundi).
+  function onPaddleEvent(ev) {
+    if (!ev || ev.name !== 'checkout.completed') return;
+    billing.waitUntil = Date.now() + 60000; billing.err = '';
+    renderSubCard();
+    pollBilling();
+  }
+  function pollBilling() {
+    if (!billing.waitUntil) return;
+    loadBilling().then(function () {
+      if (!billing.waitUntil) return;
+      var s = currentSub();
+      if (s && SUB_LIVE[s.status]) {
+        billing.waitUntil = 0; renderSubCard();
+        flash(tx('Pretplata je aktivna.'));
+      } else if (Date.now() > billing.waitUntil) {
+        billing.waitUntil = 0;
+        billing.err = tx('Plaćanje je prošlo, ali potvrda još nije stigla. Osvježi stranicu za minutu.');
+        renderSubCard();
+      } else {
+        setTimeout(pollBilling, 2500);
+      }
+    });
+  }
+  function startCheckout() {
+    if (!PADDLE || !auth.user || billing.busy) return;
+    var user = auth.user;
+    billing.busy = true; billing.err = ''; renderSubCard();
+    loadPaddle().then(function (P) {
+      billing.busy = false; renderSubCard();
+      if (auth.user !== user) return;
+      // Paddleov checkout nema hrvatski; bez locale sam bira jezik preglednika ili engleski.
+      var settings = { displayMode: 'overlay', theme: 'light', allowLogout: false };
+      if (I18N.lang === 'en') settings.locale = 'en';
+      P.Checkout.open({
+        items: [{ priceId: PADDLE.priceId, quantity: 1 }],
+        customer: user.email ? { email: user.email } : undefined,
+        customData: { user_id: user.id },   // webhook po ovome povezuje pretplatu s računom
+        settings: settings
+      });
+    }).catch(function (err) {
+      console.error(err);
+      billing.busy = false;
+      billing.err = tx('Plaćanje se trenutno ne može otvoriti. Provjeri vezu i pokušaj ponovno.');
+      renderSubCard();
+    });
+  }
+  // Paddleov portal za kupce (računi, kartica, otkazivanje). Poveznica je jednokratna, pa je
+  // daje Edge Function paddle-portal tek na klik. Prozor se otvara odmah, dok traje klik,
+  // jer bi ga preglednik inače blokirao; adresa mu se postavi kad stigne.
+  function openPortal(kind) {
+    if (billing.busy || !auth.user) return;
+    var win = window.open('', '_blank');
+    if (win) win.opener = null;
+    billing.busy = true; billing.err = ''; renderSubCard();
+    sb.functions.invoke('paddle-portal', { body: {} }).then(function (res) {
+      if (res.error || !res.data || !res.data.url) throw res.error || new Error('portal');
+      var url = (kind === 'cancel' && res.data.cancel) || res.data.url;
+      if (win) win.location.href = url; else location.href = url;
+      billing.busy = false; renderSubCard();
+    }).catch(function (err) {
+      console.error('Portal za pretplatu', err);
+      if (win) win.close();
+      billing.busy = false;
+      billing.err = tx('Upravljanje pretplatom trenutno nije dostupno. Pokušaj ponovno.');
+      renderSubCard();
+    });
+  }
+  function subDate(ts) {
+    if (!ts) return '';
+    var d = new Date(ts);
+    // hrvatski datum završava točkom („24. prosinca 2026.”), a rečenica u koju ide ima svoju
+    return isNaN(d) ? '' : d.toLocaleDateString(I18N.lang === 'en' ? 'en-GB' : 'hr-HR', { day: 'numeric', month: 'long', year: 'numeric' }).replace(/\.$/, '');
+  }
+  function renderSubCard() {
+    var el = $('#subCard'); if (!el) return;
+    var show = !!(sb && auth.user && billing.admin && PADDLE);
+    el.hidden = !show;
+    if (!show) { el.innerHTML = ''; return; }
+    var busy = billing.busy ? ' disabled' : '';
+    var html = '<h2>' + ICON.card + tx('Pretplata') + '</h2>' +
+      '<p class="hint">' + tx('Probno razdoblje razvoja: vidljivo samo administratorima, plaćanje je u Paddleovom sandboxu (testne kartice, bez naplate).') + '</p>';
+    var s = currentSub();
+    if (!billing.loaded && !billing.err) {
+      html += '<p class="hint">' + tx('Učitavam…') + '</p>';
+    } else if (billing.waitUntil) {
+      html += '<p class="share-lead" role="status">' + tx('Potvrđujem plaćanje…') + '</p>';
+    } else if (s && (SUB_LIVE[s.status] || s.status === 'paused')) {
+      var badge, detail;
+      if (s.status === 'past_due') {
+        badge = '<span class="badge sev">' + tx('Plaćanje nije uspjelo') + '</span>';
+        detail = tx('Paddle će ponovno pokušati naplatiti. Provjeri karticu u upravljanju pretplatom.');
+      } else if (s.status === 'paused') {
+        badge = '<span class="badge mild">' + tx('Pauzirana') + '</span>';
+        detail = tx('Pretplata je pauzirana i ne naplaćuje se.');
+      } else if (s.cancel_at) {
+        badge = '<span class="badge mild">' + tx('Otkazana') + '</span>';
+        detail = tx('Vrijedi do {date}. Nakon toga se više ne naplaćuje.', { date: subDate(s.cancel_at) });
+      } else if (s.status === 'trialing') {
+        badge = '<span class="badge ok">' + tx('Probno razdoblje') + '</span>';
+        detail = tx('Prva naplata {date}.', { date: subDate(s.trial_end || s.current_period_end) });
+      } else {
+        badge = '<span class="badge ok">' + tx('Aktivna') + '</span>';
+        detail = s.current_period_end ? tx('Sljedeća naplata {date}.', { date: subDate(s.current_period_end) }) : '';
+      }
+      html += '<div class="sub-status">' + badge + (detail ? '<span class="share-lead">' + esc(detail) + '</span>' : '') + '</div>' +
+        '<div class="sub-actions"><button type="button" class="btn" data-action="sub-portal" data-fk="sub-portal"' + busy + '>' +
+        tx('Upravljaj pretplatom') + '</button>' +
+        (s.cancel_at || s.status === 'paused' ? '' : '<button type="button" class="btn-link grey" data-action="sub-cancel" data-fk="sub-cancel"' + busy + '>' +
+          tx('Otkaži pretplatu') + '</button>') + '</div>' +
+        '<span class="hint">' + tx('Otvara se Paddleov portal: računi, promjena kartice i otkazivanje.') + '</span>';
+    } else {
+      html += '<p class="share-lead">' + tx('Tanjurić Premium. Plaćanje, račune i PDV vodi Paddle, naš ovlašteni prodavač.') + '</p>' +
+        (s ? '<p class="hint">' + tx('Prethodna pretplata je završila.') + '</p>' : '') +
+        '<div class="sub-actions"><button type="button" class="btn btn-primary" data-action="sub-checkout" data-fk="sub-checkout"' + busy + '>' +
+        ICON.card + tx(billing.busy ? 'Otvaram…' : 'Pretplati se') + '</button></div>';
+    }
+    if (billing.err) html += '<span class="alert-err" role="alert">' + esc(billing.err) + '</span>';
+    el.innerHTML = html;
   }
 
   // Kartica „Podsjetnici” na kartici Terapije.
@@ -1578,6 +1750,7 @@
       { id: 'remindCard', icon: ICON.bell, label: tx('Podsjetnici') },
       { id: 'allergyCard', icon: ICON.shield, label: tx('Alergije') },
       { id: 'shareCard', icon: ICON.people, label: tx('Dijeljenje') },
+      { id: 'subCard', icon: ICON.card, label: tx('Pretplata') },
       { id: 'dataCard', icon: ICON.data, label: tx('Podaci') }
     ].filter(function (it) { var el = document.getElementById(it.id); return el && !el.hidden; });
     // Kartica je nestala ili je dijete promijenjeno (npr. obrisano iz panela) — panel se zatvara.
@@ -1662,6 +1835,7 @@
     renderShareCard(child);
     renderMedCard(child);
     renderRemindCard(child);
+    renderSubCard();
     var sh = child && shares[child.id];
     $('#dataNote').textContent = sh
       ? tx('Zapise za dijete {name} vide i mogu mijenjati svi s kojima je dijete podijeljeno. CSV je tvoja kopija za liječnika ili arhivu.', { name: child.name })
@@ -3058,6 +3232,9 @@
       case 'set-lang': I18N.setLang(v); break;
       case 'sign-in': signIn(); break;
       case 'sign-out': signOut(); break;
+      case 'sub-checkout': startCheckout(); break;
+      case 'sub-portal': openPortal('overview'); break;
+      case 'sub-cancel': openPortal('cancel'); break;
       case 'export-open':
         ui.exp = newExport(v, activeChild()); renderAside();
         if ($('#xWhat')) $('#xWhat').focus();
@@ -3293,6 +3470,7 @@
     push.sub = null; push.prefs = null; push.err = ''; push.busy = false;
     ui.form = null; ui.editingId = null; ui.formKind = null; ui.legacy = null; ui.addingChild = false;
     ui.invite = null; ui.shareConfirm = null; ui.shareErr = ''; ui.shareBusy = false;
+    billing.admin = false; billing.loaded = false; billing.rows = []; billing.busy = false; billing.err = ''; billing.waitUntil = 0;
     if (!user) { setSignInDisabled(false); $('#inviteNote').hidden = !pendingInvite(); showScreen('login'); return; }
     var name = (user.user_metadata && (user.user_metadata.full_name || user.user_metadata.name)) || user.email || '';
     $('#userName').textContent = name;
@@ -3302,7 +3480,10 @@
     loadUserData();
     // Poveznica na administraciju samo za administratore (public.admins).
     sb.rpc('is_admin').then(function (res) {
-      if (auth.user === user) $('#adminLink').hidden = res.data !== true;
+      if (auth.user !== user) return;
+      $('#adminLink').hidden = res.data !== true;
+      billing.admin = res.data === true;
+      if (billing.admin) loadBilling();
     });
   }
 
@@ -3327,6 +3508,7 @@
     lastRefresh = Date.now();
     refreshFromServer(false);
     loadShares();
+    loadBilling();   // povratak iz Paddleovog portala (npr. nakon otkazivanja)
   }
   document.addEventListener('visibilitychange', function () {
     if (!document.hidden && Date.now() - lastRefresh > 15000) refreshNow();
