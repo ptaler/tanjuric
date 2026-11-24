@@ -69,7 +69,7 @@
     return d && Object.prototype.hasOwnProperty.call(d, key) ? d[key] : key;
   }
 
-  // Množina. forms: hrvatski oblici 'jednina|2–4|5+' (ključ); prijevod: 'one|other'.
+  // Množina. forms: hrvatski oblici 'jednina|2-4|5+' (ključ); prijevod: 'one|other'.
   // Decimalni broj uzima srednji (hr) odnosno množinski (en) oblik.
   function hrForm(n, f) {
     if (n !== Math.floor(n)) return f[1];

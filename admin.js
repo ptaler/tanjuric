@@ -64,7 +64,7 @@
     return WEEKDAYS[(dt.getDay() + 6) % 7] + ', ' + Number(p[2]) + '. ' + Number(p[1]) + '. ' + p[0] + '.';
   }
   function rel(iso) {
-    if (!iso) return '—';
+    if (!iso) return '-';
     var diff = Date.now() - ts(iso);
     if (diff < 60000) return 'upravo';
     if (diff < 3600000) return 'prije ' + Math.floor(diff / 60000) + ' min';
@@ -75,7 +75,7 @@
     return fmtDate.format(new Date(iso));
   }
   function whenHtml(iso) {
-    if (!iso) return '<span class="muted">—</span>';
+    if (!iso) return '<span class="muted">-</span>';
     return '<span class="when" title="' + esc(fmtDateTime.format(new Date(iso))) + '">' + esc(rel(iso)) + '</span>';
   }
   function initial(s) { return (String(s || '').trim().charAt(0) || '?').toUpperCase(); }
@@ -277,7 +277,8 @@
   function hbarsSimple(list, color) {
     var total = list.reduce(function (s, x) { return s + x.n; }, 0);
     return hbars(list.map(function (x) {
-      return { label: x.name, bars: [{ v: x.n, color: color, label: 'Broj', note: pct(x.n, total) + ' %' }] };
+      // Baza za praznu vrijednost vraća dugu crticu; prikazuje se kao obična crtica.
+      return { label: x.name === '—' ? '-' : x.name, bars: [{ v: x.n, color: color, label: 'Broj', note: pct(x.n, total) + ' %' }] };
     }));
   }
   function childrenHtml(cpu, total) {
@@ -353,7 +354,7 @@
     });
     return out;
   }
-  function periodLabel(r) { return r.end && r.end !== r.d ? dayShort(r.d) + ' – ' + dayShort(r.end) : dayLong(r.d); }
+  function periodLabel(r) { return r.end && r.end !== r.d ? dayShort(r.d) + ' - ' + dayShort(r.end) : dayLong(r.d); }
 
   function drawCharts() {
     var o = state.overview;
@@ -380,7 +381,7 @@
         }), SERIES, 220);
       } else if (k === 'hours') {
         el.innerHTML = colChart(w, o.hours.map(function (v, h) {
-          return { x: h % 3 === 0 ? h + ' h' : '', vals: [v], tip: '<b>' + h + ':00 – ' + h + ':59</b>' + tipRow(C.meals, 'Upisa', v) };
+          return { x: h % 3 === 0 ? h + ' h' : '', vals: [v], tip: '<b>' + h + ':00 - ' + h + ':59</b>' + tipRow(C.meals, 'Upisa', v) };
         }), [{ color: C.meals }], 160, true);
       } else if (k === 'weekdays') {
         el.innerHTML = colChart(w, o.weekdays.map(function (v, i) {
@@ -433,7 +434,7 @@
       'Q' + (x + w) + ' ' + y + ' ' + (x + w) + ' ' + (y + r) + 'V' + (y + h) + 'Z';
   }
 
-  // rows: [{ x, vals: [..], tip }], series: [{ color }] — složeni stupci od dna prema gore
+  // rows: [{ x, vals: [..], tip }], series: [{ color }] - složeni stupci od dna prema gore
   function colChart(W, rows, series, H, allLabels) {
     var pw = W - M.l - M.r, ph = H - M.t - M.b, n = rows.length;
     var max = Math.max.apply(null, rows.map(function (r) { return r.vals.reduce(function (a, b) { return a + b; }, 0); }));
