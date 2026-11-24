@@ -3,7 +3,7 @@
 // i sprema se u preglednik, pa ga ovaj kolačić ne mijenja.
 //
 // Bez ovisnosti (nema package.json): umjesto next() iz @vercel/functions vraća se odgovor
-// sa zaglavljem x-middleware-next, što next() radi interno — zahtjev nastavlja na statičnu
+// sa zaglavljem x-middleware-next, što next() radi interno - zahtjev nastavlja na statičnu
 // datoteku, a ostala zaglavlja (Set-Cookie) dodaju se odgovoru.
 
 // Hrvatska, Slovenija, BiH, Srbija, Kosovo, Crna Gora, Sjeverna Makedonija

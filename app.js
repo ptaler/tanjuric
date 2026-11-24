@@ -22,7 +22,7 @@
     { id: 'doses', label: tx('Terapije'), newLabel: tx('Nova terapija') },
     { id: 'temps', label: tx('Temperatura'), newLabel: tx('Novo mjerenje') }
   ];
-  // [jednina, 2–4, 5+] — za decimalne doze koristi se srednji oblik
+  // [jednina, 2-4, 5+] - za decimalne doze koristi se srednji oblik
   var UNITS = {
     ml: ['ml', 'ml', 'ml'],
     mg: ['mg', 'mg', 'mg'],
@@ -159,7 +159,7 @@
         E('demo-lana', 0, '12:30', 'Ručak', tx('Piletina s rižom i kuhanom mrkvom'), [], false, [], '', '', ''),
         E('demo-lana', 1, '10:00', 'Jutarnja užina', tx('Keks iz vrtića'), ['Gluten', 'Mlijeko'], true, ['Osip', 'Svrbež'], 'Umjerena', 25, tx('Osip oko usta i na obrazima, prošao nakon otprilike 2 sata. Zamoliti odgojiteljicu da provjeri deklaraciju.')),
         E('demo-lana', 1, '18:30', 'Večera', tx('Juha od povrća i kruh'), ['Gluten', 'Celer'], false, [], '', '', ''),
-        E('demo-lana', 2, '08:00', 'Doručak', tx('Palačinke bez jaja sa zobenim napitkom'), ['Gluten'], false, [], '', '', tx('Recept s lanenim sjemenkama umjesto jaja — dobro prošlo.')),
+        E('demo-lana', 2, '08:00', 'Doručak', tx('Palačinke bez jaja sa zobenim napitkom'), ['Gluten'], false, [], '', '', tx('Recept s lanenim sjemenkama umjesto jaja - dobro prošlo.')),
         E('demo-lana', 2, '13:00', 'Ručak', tx('Riblji štapići i pire krumpir bez mlijeka'), ['Riba', 'Gluten'], true, ['Bol u trbuhu'], 'Blaga', 60, tx('Žalila se na trbuh, možda se prejela.')),
         E('demo-marko', 0, '07:45', 'Doručak', tx('Jaje na oko i tost'), ['Jaja', 'Gluten'], false, [], '', '', ''),
         E('demo-marko', 1, '16:00', 'Popodnevna užina', tx('Čokoladica s rođendana u školi'), ['Mlijeko', 'Soja', 'Orašasti plodovi'], true, ['Oticanje usana ili lica', 'Kašalj ili piskanje'], 'Jaka', 10, tx('Deklaracija: „može sadržavati tragove lješnjaka”. Dana terapija prema planu liječnika, smirilo se za 40 min. Pokazati pedijatru.')),
@@ -281,7 +281,7 @@
     sync.state = s;
     var el = $('#syncStatus'); if (!el) return;
     el.className = 'sync ' + s;
-    el.textContent = tx(s === 'saving' ? 'Spremanje…' : s === 'error' ? 'Nije spremljeno — pokušavam ponovno' : 'Spremljeno');
+    el.textContent = tx(s === 'saving' ? 'Spremanje…' : s === 'error' ? 'Nije spremljeno - pokušavam ponovno' : 'Spremljeno');
   }
 
   function adoptDemoParents() {
@@ -345,7 +345,7 @@
       setSyncState('error');
       clearTimeout(sync.retry);
       sync.retry = setTimeout(runSync, 8000);
-      // RLS je odbio upis: vjerojatno je pristup podijeljenom djetetu prestao — osvježi pa
+      // RLS je odbio upis: vjerojatno je pristup podijeljenom djetetu prestao - osvježi pa
       // mergeServer() makne dijete i njegove neposlane izmjene.
       if (err && err.code === '42501') refreshFromServer(true);
     });
@@ -490,7 +490,7 @@
       if (cached && normalize(cached.data)) {
         data = cached.data; synced = cached.synced || {};
         showScreen('app'); renderAll(); setSyncState('error'); scheduleSync(8000);
-        flash(tx('Nema veze s poslužiteljem — prikazana je zadnja spremljena kopija s ovog uređaja.'));
+        flash(tx('Nema veze s poslužiteljem - prikazana je zadnja spremljena kopija s ovog uređaja.'));
       } else {
         showScreen('login');
         var e = $('#authError'); e.hidden = false; e.textContent = tx('Učitavanje podataka nije uspjelo. Provjeri internetsku vezu i pokušaj ponovno.');
@@ -1367,7 +1367,7 @@
       '<div class="plan-head"><div><h2 id="planTitle">' + tx('Svakodnevne terapije') + '</h2><span class="muted">' + esc(dayLabel(today).full) + '</span></div>' +
       (todayList.length ? '<span class="plan-count">' + done + ' / ' + todayList.length + '</span>' : '') + '</div>' +
       (todayList.length ? '<div class="bar plan-bar" aria-hidden="true"><i style="width:' + pct + '%"></i></div>' : '') +
-      (yList.length ? '<div class="plan-day">' + tx('Jučer — nije potvrđeno') + '</div>' + yList.map(occHtml).join('') : '') +
+      (yList.length ? '<div class="plan-day">' + tx('Jučer - nije potvrđeno') + '</div>' + yList.map(occHtml).join('') : '') +
       (todayList.length ? (yList.length ? '<div class="plan-day">' + tx('Danas') + '</div>' : '') + todayList.map(occHtml).join('') : '') +
       '</section>';
   }
@@ -1447,11 +1447,11 @@
     var temps24 = ofChild(data.temps, child).filter(in24).map(function (t) { return t.value; });
     var maxT = temps24.length ? Math.max.apply(null, temps24) : null;
     function leg(kind, label) { return '<span><span class="tl-node sm ' + kind + '" aria-hidden="true">' + TL_ICON[kind] + '</span>' + label + '</span>'; }
-    return '<h2>' + esc(tx('Pregled — {name}', { name: child.name })) + '</h2>' +
+    return '<h2>' + esc(tx('Pregled - {name}', { name: child.name })) + '</h2>' +
       '<div class="stats"><div class="stat"><b>' + meals24 + '</b><span>' + plural(meals24, 'obrok', 'obroka', 'obroka') + ' ' + tx('u zadnja 24 h') + '</span></div>' +
       '<div class="stat react"><b>' + react7 + '</b><span>' + plural(react7, 'reakcija', 'reakcije', 'reakcija') + ' ' + tx('u zadnjih 7 dana') + '</span></div>' +
       '<div class="stat"><b>' + doses24 + '</b><span>' + plural(doses24, 'doza', 'doze', 'doza') + ' ' + tx('u zadnja 24 h') + '</span></div>' +
-      '<div class="stat"><b>' + (maxT == null ? '—' : esc(fmtNum(maxT.toFixed(1))) + '°') + '</b><span>' + tx('najviša temperatura u 24 h') + '</span></div></div>' +
+      '<div class="stat"><b>' + (maxT == null ? '-' : esc(fmtNum(maxT.toFixed(1))) + '°') + '</b><span>' + tx('najviša temperatura u 24 h') + '</span></div></div>' +
       '<div class="tl-legend">' + leg('meal', tx('Obrok')) + leg('react', tx('Reakcija')) + leg('dose', tx('Terapija')) + leg('temp', tx('Temperatura')) + '</div>' +
       '<p class="foot-note">' + tx('Reakcija se prikazuje kao zaseban događaj kad je u obroku upisano nakon koliko se minuta javila.') + '</p>';
   }
@@ -1625,7 +1625,7 @@
         esc(doseText(last.dose, last.unit)) + ' · ' + esc(agoText(last.date, last.time)) + '</span>' +
         (early ? '<span class="tag warn">' + esc(tx('Upisani razmak od {h} h još nije prošao', { h: fmtNum(m.interval) })) + '</span>' : '') + '</div>';
     }).filter(Boolean);
-    return '<h2>' + esc(tx('Terapije — {name}', { name: child.name })) + '</h2>' +
+    return '<h2>' + esc(tx('Terapije - {name}', { name: child.name })) + '</h2>' +
       '<div class="stats"><div class="stat"><b>' + last24 + '</b><span>' + plural(last24, 'doza', 'doze', 'doza') + ' ' + tx('u zadnja 24 h') + '</span></div>' +
       '<div class="stat"><b>' + meds.length + '</b><span>' + plural(meds.length, 'lijek', 'lijeka', 'lijekova') + ' ' + tx('u popisu') + '</span></div></div>' +
       '<div style="display:flex;flex-direction:column;gap:10px"><span class="muted" style="font-size:14px">' + tx('Zadnja doza po lijeku') + '</span>' +
@@ -1639,10 +1639,10 @@
     var day = mine.filter(function (t) { var s = stamp(t.date, t.time); return s <= now && now - s < 86400000; });
     var max = day.reduce(function (m, t) { return !m || t.value > m.value ? t : m; }, null);
     var spark = sparkHtml(mine.filter(function (t) { return now - stamp(t.date, t.time) < 3 * 86400000; }));
-    return '<h2>' + esc(tx('Temperatura — {name}', { name: child.name })) + '</h2>' +
-      '<div class="stats"><div class="stat ' + (last && last.value >= 38 ? 'react' : '') + '"><b>' + (last ? fmtNum(last.value.toFixed(1)) + '°' : '—') + '</b><span>' +
+    return '<h2>' + esc(tx('Temperatura - {name}', { name: child.name })) + '</h2>' +
+      '<div class="stats"><div class="stat ' + (last && last.value >= 38 ? 'react' : '') + '"><b>' + (last ? fmtNum(last.value.toFixed(1)) + '°' : '-') + '</b><span>' +
       (last ? esc(tx('zadnje mjerenje, {ago}', { ago: agoText(last.date, last.time) })) : tx('još nema mjerenja')) + '</span></div>' +
-      '<div class="stat ' + (max && max.value >= 38 ? 'react' : '') + '"><b>' + (max ? fmtNum(max.value.toFixed(1)) + '°' : '—') + '</b><span>' + tx('najviša u zadnja 24 h') + '</span></div></div>' +
+      '<div class="stat ' + (max && max.value >= 38 ? 'react' : '') + '"><b>' + (max ? fmtNum(max.value.toFixed(1)) + '°' : '-') + '</b><span>' + tx('najviša u zadnja 24 h') + '</span></div></div>' +
       spark +
       '<p class="foot-note">' + tx('Oznake (povišena od 37,5 °C, vrućica od 38 °C, visoka od 39 °C) su okvirne i ovise o načinu mjerenja i dobi djeteta. Za procjenu se obrati liječniku.') + '</p>';
   }
@@ -1689,7 +1689,7 @@
       (m.times.length ? '<div class="grid2"><div class="field"><label for="mSince">' + tx('Od') + '</label><input id="mSince" class="input" type="date" data-mfield="since" value="' + esc(m.since) + '"></div>' +
         '<div class="field"><label for="mUntil">' + tx('Do (nije obavezno)') + '</label><input id="mUntil" class="input" type="date" data-mfield="until" value="' + esc(m.until) + '"></div></div>' : '') +
       '</fieldset>' +
-      '<div class="field"><label for="mInterval">' + tx('Najmanji razmak između doza (sati)') + '</label><input id="mInterval" class="input" type="text" inputmode="decimal" data-mfield="interval" value="' + esc(m.interval) + '" placeholder="' + tx('npr. 6 — nije obavezno') + '">' +
+      '<div class="field"><label for="mInterval">' + tx('Najmanji razmak između doza (sati)') + '</label><input id="mInterval" class="input" type="text" inputmode="decimal" data-mfield="interval" value="' + esc(m.interval) + '" placeholder="' + tx('npr. 6 - nije obavezno') + '">' +
       '<span class="hint">' + tx('Prema uputi liječnika. Ako je upisan, dobit ćeš upozorenje kad je nova doza preblizu prethodnoj.') + '</span></div>' +
       '<div class="field"><label for="mNote">' + tx('Napomena') + '</label><input id="mNote" class="input" type="text" maxlength="200" data-mfield="note" value="' + esc(m.note) + '" placeholder="' + tx('npr. jačina, za što se daje') + '"></div>' +
       '<div id="mError" class="alert-err" role="alert" hidden></div>' +
@@ -1721,7 +1721,7 @@
         (m.note ? '<span class="muted" style="font-style:italic">' + esc(m.note) + '</span>' : '') + actions + '</div>';
     }).join('');
     var adding = ui.medForm && !ui.medEditingId;
-    mc.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h2>' + esc(tx('Lijekovi — {name}', { name: child.name })) + '</h2>' +
+    mc.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h2>' + esc(tx('Lijekovi - {name}', { name: child.name })) + '</h2>' +
       (adding ? '' : '<button type="button" class="btn-link" data-action="med-new" data-fk="med-new">' + ICON.plus + tx('Dodaj') + '</button>') + '</div>' +
       (list ? '<div class="med-list">' + list + '</div>' : (adding ? '' : '<span class="muted" style="font-size:14px">' + tx('Popis lijekova koje dijete koristi. Pri upisu terapije biraš iz ovog popisa, a doza se sama popuni.') + '</span>')) +
       (adding ? medFormHtml() : '');
@@ -1753,7 +1753,7 @@
       { id: 'subCard', icon: ICON.card, label: tx('Pretplata') },
       { id: 'dataCard', icon: ICON.data, label: tx('Podaci') }
     ].filter(function (it) { var el = document.getElementById(it.id); return el && !el.hidden; });
-    // Kartica je nestala ili je dijete promijenjeno (npr. obrisano iz panela) — panel se zatvara.
+    // Kartica je nestala ili je dijete promijenjeno (npr. obrisano iz panela) - panel se zatvara.
     if (ui.sheet && (!child || ui.sheetChild !== child.id || !items.some(function (it) { return it.id === ui.sheet; }))) closeSheet(false);
     nav.innerHTML = child ? items.map(function (it) {
       var n = asideCount(it.id, child);
@@ -1800,7 +1800,7 @@
   }
   // Prelazak na široki zaslon (okretanje tableta, promjena prozora): panel se zatvara, stupac je opet uz popis.
   if (mqSheet.addEventListener) mqSheet.addEventListener('change', function (e) { if (!e.matches) closeSheet(false); });
-  // Povlačenje panela prema dolje zatvara ga — samo kad je sadržaj panela na vrhu.
+  // Povlačenje panela prema dolje zatvara ga - samo kad je sadržaj panela na vrhu.
   (function () {
     var aside = $('#aside'), y0 = null, dy = 0;
     if (!aside) return;
@@ -1857,11 +1857,11 @@
     var maxC = keys.length ? counts[keys[0]] : 1;
     var last = reacts[0];
 
-    stats.innerHTML = '<h2>' + esc(tx('Pregled — {name}', { name: child.name })) + '</h2>' +
+    stats.innerHTML = '<h2>' + esc(tx('Pregled - {name}', { name: child.name })) + '</h2>' +
       '<div class="stats"><div class="stat"><b>' + mine.length + '</b><span>' + plural(mine.length, 'uneseni obrok', 'unesena obroka', 'unesenih obroka') + '</span></div>' +
       '<div class="stat react"><b>' + react7 + '</b><span>' + plural(react7, 'reakcija', 'reakcije', 'reakcija') + ' ' + tx('u zadnjih 7 dana') + '</span></div></div>' +
       (last ? '<div style="font-size:14px;display:flex;flex-direction:column;gap:2px"><span class="muted">' + tx('Zadnja reakcija') + '</span><strong>' +
-        esc(whenText(last.date, last.time) + ' — ' + last.food) + '</strong></div>' : '') +
+        esc(whenText(last.date, last.time) + ' - ' + last.food) + '</strong></div>' : '') +
       '<div style="display:flex;flex-direction:column;gap:8px"><span class="muted" style="font-size:14px">' + tx('Alergeni u obrocima s reakcijom') + '</span>' +
       (keys.length ? keys.map(function (a) {
         return '<div class="bar-row"><div class="lbl"><strong>' + esc(tx0(a)) + '</strong><span class="muted">' +
@@ -2024,7 +2024,7 @@
         var inp = $('#shareLink'); if (!inp) return;
         var copied = navigator.clipboard ? navigator.clipboard.writeText(inp.value) : Promise.reject(new Error('clipboard'));
         copied.then(function () { flash(tx('Poveznica je kopirana. Pošalji je drugom roditelju.')); })
-          .catch(function () { inp.focus(); inp.select(); flash(tx('Poveznica je označena — kopiraj je i pošalji.')); });
+          .catch(function () { inp.focus(); inp.select(); flash(tx('Poveznica je označena - kopiraj je i pošalji.')); });
         break;
       }
       case 'share-send': {
@@ -2395,8 +2395,8 @@
     });
     var note = $('#fAllergenFrom');
     if (note) note.textContent = f.allergens.length
-      ? tx('Alergeni su preuzeti iz upisa od {date} — provjeri jesu li isti.', { date: shortDate(g.last.date) })
-      : tx('U upisu od {date} nije bio označen nijedan alergen — provjeri.', { date: shortDate(g.last.date) });
+      ? tx('Alergeni su preuzeti iz upisa od {date} - provjeri jesu li isti.', { date: shortDate(g.last.date) })
+      : tx('U upisu od {date} nije bio označen nijedan alergen - provjeri.', { date: shortDate(g.last.date) });
     updateWarn();
     showError('');
     closeAc();
@@ -2508,7 +2508,7 @@
     data.doses = existing ? prevD.map(function (x) { return x.id === entry.id ? entry : x; }) : [entry].concat(prevD);
     if (!persist()) {
       data.doses = prevD; data.meds = prevM;
-      showError(tx('Spremanje nije uspjelo — preglednik ne dopušta spremanje podataka.'));
+      showError(tx('Spremanje nije uspjelo - preglednik ne dopušta spremanje podataka.'));
       return;
     }
     finishSave(!!existing, tx(existing ? 'Terapija je ažurirana.' : (newMed ? 'Terapija je spremljena, a lijek dodan u popis.' : 'Terapija je spremljena.')));
@@ -2553,7 +2553,7 @@
     if (apDose) data.doses = [apDose].concat(prevD);
     if (!persist()) {
       data.temps = prev; data.doses = prevD; data.meds = prevM;
-      showError(tx('Spremanje nije uspjelo — preglednik ne dopušta spremanje podataka.'));
+      showError(tx('Spremanje nije uspjelo - preglednik ne dopušta spremanje podataka.'));
       return;
     }
     finishSave(!!existing, tx(existing ? 'Mjerenje je ažurirano.' : 'Mjerenje je spremljeno.'));
@@ -2561,7 +2561,7 @@
 
   function saveMeal() {
     var f = ui.form;
-    if (f.photoBusy) { f.saveAfterPhoto = true; showError(tx('Fotografija se još sprema — obrok će se spremiti čim ona bude gotova.')); return; }
+    if (f.photoBusy) { f.saveAfterPhoto = true; showError(tx('Fotografija se još sprema - obrok će se spremiti čim ona bude gotova.')); return; }
     if (!String(f.food).trim()) { showError(tx('Upiši što je dijete jelo.')); $('#fFood').focus(); return; }
     if (!f.date || !f.time) { showError(tx('Upiši datum i vrijeme obroka.')); return; }
     var existing = data.entries.filter(function (x) { return x.id === ui.editingId; })[0];
@@ -2584,8 +2584,8 @@
     if (!persist()) {
       data.entries = prev;
       showError(tx(entry.photo
-        ? 'Spremanje nije uspjelo — u pregledniku nema dovoljno mjesta. Pokušaj bez fotografije.'
-        : 'Spremanje nije uspjelo — preglednik ne dopušta spremanje podataka (npr. privatni način rada).'));
+        ? 'Spremanje nije uspjelo - u pregledniku nema dovoljno mjesta. Pokušaj bez fotografije.'
+        : 'Spremanje nije uspjelo - preglednik ne dopušta spremanje podataka (npr. privatni način rada).'));
       return;
     }
     var wasEdit = !!existing;
@@ -2895,7 +2895,7 @@
     }
     var count = res ? res.count : 0;
     box.innerHTML = '<div class="export-panel" role="group" aria-labelledby="expTitle">' +
-      '<strong id="expTitle">' + tx(x.kind === 'print' ? 'Ispis' : 'Izvoz u CSV') + ' — ' + esc(child.name) + '</strong>' +
+      '<strong id="expTitle">' + tx(x.kind === 'print' ? 'Ispis' : 'Izvoz u CSV') + ' - ' + esc(child.name) + '</strong>' +
       '<div class="field"><label for="xWhat">' + tx('Sadržaj') + '</label><select id="xWhat" class="input" data-xfield="what">' +
         ['all', 'meals', 'doses', 'temps'].map(function (k) { return opt(k, WHAT_LABEL[k], x.what); }).join('') + '</select></div>' +
       '<fieldset><legend>' + tx('Razdoblje') + '</legend><div class="chips">' + PRESETS.map(function (p) {
@@ -2934,8 +2934,8 @@
   function printReport(child, x, res) {
     var known = knownOf(child);
     var pv = $('#printView');
-    pv.innerHTML = '<header class="pv-head"><div><h1>' + esc(WHAT_LABEL[x.what]) + ' — ' + esc(child.name) + '</h1>' +
-      '<p>' + tx('Razdoblje:') + ' <strong>' + esc(hrDate(x.from)) + ' – ' + esc(hrDate(x.to)) + '</strong>' +
+    pv.innerHTML = '<header class="pv-head"><div><h1>' + esc(WHAT_LABEL[x.what]) + ' - ' + esc(child.name) + '</h1>' +
+      '<p>' + tx('Razdoblje:') + ' <strong>' + esc(hrDate(x.from)) + ' - ' + esc(hrDate(x.to)) + '</strong>' +
       (res.filters.length ? ' · ' + esc(res.filters.join(' · ')) : '') + '</p>' +
       ((x.what === 'meals' || x.what === 'all') ? '<p>' + tx('Poznate alergije:') + ' <strong>' + esc(known.length ? known.map(tx0).join(', ') : tx('nisu upisane')) + '</strong></p>' : '') +
       '<p>' + esc(res.summary) + '</p></div>' +
@@ -3309,7 +3309,7 @@
     if (interval !== '' && (isNaN(interval) || interval <= 0 || interval > 168)) return fail(tx('Razmak upiši u satima, npr. 6.'), '#mInterval');
     var times = (m.times || []).slice().sort(), since = '', until = '';
     if (times.length) {
-      if (dose === '') return fail(tx('Za svakodnevnu terapiju upiši uobičajenu dozu — ona se upisuje pri svakoj potvrdi.'), '#mDose');
+      if (dose === '') return fail(tx('Za svakodnevnu terapiju upiši uobičajenu dozu - ona se upisuje pri svakoj potvrdi.'), '#mDose');
       since = m.since || toIso(new Date());
       until = m.until || '';
       // Promijenjeni termini vrijede od danas, da se ranijim danima ne pojave nepotvrđeni termini.
@@ -3326,7 +3326,7 @@
     };
     var prev = data.meds;
     data.meds = existing ? prev.map(function (x) { return x.id === med.id ? med : x; }) : prev.concat([med]);
-    if (!persist()) { data.meds = prev; return fail(tx('Spremanje nije uspjelo — preglednik ne dopušta spremanje podataka.')); }
+    if (!persist()) { data.meds = prev; return fail(tx('Spremanje nije uspjelo - preglednik ne dopušta spremanje podataka.')); }
     ui.medForm = null; ui.medEditingId = null;
     renderAll();
     if (ui.form && ui.formKind === 'dose') renderForm();
@@ -3413,7 +3413,7 @@
     }
   });
 
-  // Plan terapija prikazuje „za 20 min” / „kasni 5 min” — osvježi ga svake minute dok se ne uređuje.
+  // Plan terapija prikazuje „za 20 min” / „kasni 5 min” - osvježi ga svake minute dok se ne uređuje.
   setInterval(function () {
     if (!auth.user || document.hidden || ui.occEdit) return;
     if (ui.tab !== 'doses' && ui.tab !== 'all') return;

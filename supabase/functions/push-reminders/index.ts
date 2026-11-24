@@ -28,7 +28,7 @@ type Msg = {
 
 // ---------- tekst obavijesti ----------
 
-// [jednina, 2–4, 5+] kao u app.js; engleski [one, other]
+// [jednina, 2-4, 5+] kao u app.js; engleski [one, other]
 const UNITS: Record<string, { hr: [string, string, string]; en: [string, string] }> = {
   ml: { hr: ['ml', 'ml', 'ml'], en: ['ml', 'ml'] },
   mg: { hr: ['mg', 'mg', 'mg'], en: ['mg', 'mg'] },
